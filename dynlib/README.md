@@ -11,6 +11,9 @@ TODO: Function `int f(int, int)` isn't in the PLT table, why?
 
 Literature:
 
-[1]: http://www.ibm.com/developerworks/aix/library/au-aix-symbol-visibility/index.html
-[2]: http://tldp.org/HOWTO/Program-Library-HOWTO/shared-libraries.html
-[3]: http://www.akkadia.org/drepper/dsohowto.pdf
+[1] <http://www.ibm.com/developerworks/aix/library/au-aix-symbol-visibility/index.html>
+[1]: http://www.ibm.com/developerworks/aix/library/au-aix-symbol-visibility/index.html<br/>
+[2] <http://tldp.org/HOWTO/Program-Library-HOWTO/shared-libraries.html>
+[2]: http://tldp.org/HOWTO/Program-Library-HOWTO/shared-libraries.html<br/>
+[3] <http://www.akkadia.org/drepper/dsohowto.pdf>
+[3]: http://www.akkadia.org/drepper/dsohowto.pdf<br/>
