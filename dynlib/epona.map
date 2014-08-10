@@ -1,0 +1,6 @@
+MYPLUGIN {
+  global:
+    _ZN5epona1fEii;
+  local:
+    *;
+};
