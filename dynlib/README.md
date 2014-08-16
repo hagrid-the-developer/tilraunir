@@ -7,7 +7,8 @@ calling of PLT items with direct calling of hidden functions.
 Hiding symbols with binutils leave the symbol in PLT and function is still
 called through PLT.
 
-TODO: Function `int f(int, int)` isn't in the PLT table, why?
+TODO: Function `int f(int, int)` isn't in the PLT table, why? -- Probably
+	because it isn't used inside the library?
 
 Literature:
 
