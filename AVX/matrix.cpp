@@ -53,35 +53,6 @@ matrix_mul_8x8(float *C, const float *A, const float *B) {
 	}
 }
 
-void print_matrix(const float * const A) {
-	for (::size_t i = 0; i < 64; ++i) {
-		if (0 == i % 8) {
-			printf("\n");
-		}
-		printf("\t%.6f", A[i]);
-	}
-	printf("\n");
-}
-
-void print_matrix(const v8sf * const A) {
-	print_matrix(reinterpret_cast<const float*>(A));
-}
-
-void print_row(const float * const f) {
-	for (::size_t i = 0; i < 8; ++i) {
-		printf("\t%.6f", f[i]);
-	}
-	printf("\n");
-}
-
-void print_row(const v8sf * const r) {
-	print_row(reinterpret_cast<const float*>(r));
-}
-
-void print_row(const v8sf r) {
-	print_row(reinterpret_cast<const float*>(&r));
-}
-
 void
 matrix_mul_8x8_outer(float *C, const float *A, const float *B) {
 	for (::size_t i = 0; i < AVX_FLOAT_SIZE; i += 2) {
@@ -110,14 +81,9 @@ matrix_mul_8x8_outer(float *C, const float *A, const float *B) {
 
 void
 matrix_mul_8x8_inner(float *C, const float *A, const float *B) {
-//	printf("Matrix A: "); print_matrix(A);
-//	printf("Matrix B: "); print_matrix(B);
-
 	const v8sf * const row_b = (v8sf*)B;
 	v8sf * const row_c = (v8sf*)C;
 	for (::size_t i = 0; i < AVX_FLOAT_SIZE; ++i) {
-//		printf("i: %zu\n", i);
-
 		const float *a = &A[i * AVX_FLOAT_SIZE];
 		v8sf item_a[8];
 		v8sf row_mul[8];
@@ -133,10 +99,6 @@ matrix_mul_8x8_inner(float *C, const float *A, const float *B) {
 		item_a[6] = _mm256_broadcast_ss(&a[6]);
 		item_a[7] = _mm256_broadcast_ss(&a[7]);
 
-//		for (::size_t k = 0; k < 8; ++k) {
-//			printf("item[%zu]: ", k); print_row(item_a[k]);
-//		}
-
 		row_mul[0] = _mm256_mul_ps(item_a[0], row_b[0]);
 		row_mul[1] = _mm256_mul_ps(item_a[1], row_b[1]);
 		row_mul[2] = _mm256_mul_ps(item_a[2], row_b[2]);
@@ -146,10 +108,6 @@ matrix_mul_8x8_inner(float *C, const float *A, const float *B) {
 		row_mul[6] = _mm256_mul_ps(item_a[6], row_b[6]);
 		row_mul[7] = _mm256_mul_ps(item_a[7], row_b[7]);
 		
-//		for (::size_t k = 0; k < 8; ++k) {
-//			printf("row_mul[%zu]: ", k); print_row(row_mul[k]);
-//		}
-
 		add[0] = _mm256_add_ps(row_mul[0], row_mul[1]);
 		add[1] = _mm256_add_ps(row_mul[2], row_mul[3]);
 		add[2] = _mm256_add_ps(row_mul[4], row_mul[5]);
@@ -159,7 +117,6 @@ matrix_mul_8x8_inner(float *C, const float *A, const float *B) {
 		bdd[1] = _mm256_add_ps(add[2], add[3]);
 
 		row_c[i] = _mm256_add_ps(bdd[0], bdd[1]);
-//		printf("row[%zu]: ", i); print_row(row_c[i]);
 	}
 }
 
@@ -262,9 +219,6 @@ main(void)
 	if (::memcmp(E, ZZZ, size)) {
 		fprintf(stderr, "Results are different ... AVX outer: %f\n", diff_arr(E, ZZZ, len));
 	}
-
-//	printf("Slow: "); print_matrix(ZZZ);
-//	printf("Inner: "); print_matrix(D);
 
 	return 0;
 }
