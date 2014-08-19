@@ -145,7 +145,7 @@ unsigned long long get_time() {
 
 } /* Anonymous Namespace*/
 
-float diff_arr(float *a, float *b, ::size_t len)
+float diff_arr(const float *a, const float *b, ::size_t len)
 {
 	float max_diff = 0.f;
 
@@ -161,9 +161,14 @@ float diff_arr(float *a, float *b, ::size_t len)
 	return max_diff;
 }
 
+int check_results(const float *correct, const float *x, const ::size_t len, const char *name) {
+	if (::memcmp(x, correct, len * sizeof(float)) && diff_arr(x, correct, len) >= 0.0001f) {
+		fprintf(stderr, "Results are different ... %s: %f\n", name, diff_arr(x, correct, len));
+	}
+}
+
 int
-main(void)
-{
+main(void) {
 	static const ::size_t len = 25*1024*1024;
 	static const ::size_t size = len * sizeof(float);
 	static const ::size_t align = 256;
@@ -171,8 +176,6 @@ main(void)
 	float *A = static_cast<float*>( align_alloc(align, size) );
         float *B = static_cast<float*>( align_alloc(align, size) );
 	float *C = static_cast<float*>( align_alloc(align, size) );
-	float *D = static_cast<float*>( align_alloc(align, size) );
-	float *E = static_cast<float*>( align_alloc(align, size) );
 	float *ZZZ = static_cast<float*>( align_alloc(align, size) );
 
 	for (::size_t i = 0; i < len; ++i) {
@@ -184,41 +187,35 @@ main(void)
 
 	time_beg = get_time();
 	for (::size_t i = 0; i < len; i += 64) {
-		matrix_mul_8x8(&C[i], &A[i], &B[i]);
-	}
-	time_end = get_time();
-	fprintf(stderr, "AVX mul: %.6f\n", (time_end - time_beg)/1e6);
-
-	time_beg = get_time();
-	for (::size_t i = 0; i < len; i += 64) {
-		matrix_mul_8x8_inner(&D[i], &A[i], &B[i]);
-	}
-	time_end = get_time();
-	fprintf(stderr, "AVX mul inner: %.6f\n", (time_end - time_beg)/1e6);
-
-	time_beg = get_time();
-	for (::size_t i = 0; i < len; i += 64) {
-		matrix_mul_8x8_outer(&E[i], &A[i], &B[i]);
-	}
-	time_end = get_time();
-	fprintf(stderr, "AVX mul outer: %.6f\n", (time_end - time_beg)/1e6);
-
-	time_beg = get_time();
-	for (::size_t i = 0; i < len; i += 64) {
 		matrix_mul_8x8_slow(&ZZZ[i], &A[i], &B[i]);
 	}
 	time_end = get_time();
 	fprintf(stderr, "std mul: %.6f\n", (time_end - time_beg)/1e6);
 
-	if (::memcmp(C, ZZZ, size)) {
-		fprintf(stderr, "Results are different ... AVX: %f\n", diff_arr(C, ZZZ, len));
+
+	time_beg = get_time();
+	for (::size_t i = 0; i < len; i += 64) {
+		matrix_mul_8x8(&C[i], &A[i], &B[i]);
 	}
-	if (::memcmp(D, ZZZ, size) && diff_arr(D, ZZZ, len) >= 0.0001f) {
-		fprintf(stderr, "Results are different ... AVX inner: %f\n", diff_arr(D, ZZZ, len));
+	time_end = get_time();
+	fprintf(stderr, "AVX mul: %.6f\n", (time_end - time_beg)/1e6);
+	check_results(ZZZ, C, len, "AVX mul");
+
+	time_beg = get_time();
+	for (::size_t i = 0; i < len; i += 64) {
+		matrix_mul_8x8_inner(&C[i], &A[i], &B[i]);
 	}
-	if (::memcmp(E, ZZZ, size)) {
-		fprintf(stderr, "Results are different ... AVX outer: %f\n", diff_arr(E, ZZZ, len));
+	time_end = get_time();
+	fprintf(stderr, "AVX mul inner: %.6f\n", (time_end - time_beg)/1e6);
+	check_results(ZZZ, C, len, "AVX mul inner");
+
+	time_beg = get_time();
+	for (::size_t i = 0; i < len; i += 64) {
+		matrix_mul_8x8_outer(&C[i], &A[i], &B[i]);
 	}
+	time_end = get_time();
+	fprintf(stderr, "AVX mul outer: %.6f\n", (time_end - time_beg)/1e6);
+	check_results(ZZZ, C, len, "AVX mul outer");
 
 	return 0;
 }
