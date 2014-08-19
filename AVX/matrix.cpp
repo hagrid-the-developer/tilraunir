@@ -78,6 +78,56 @@ matrix_mul_8x8_outer(float *C, const float *A, const float *B) {
 		}
 	}
 }
+static inline void inner2_step(float *C, const float *A, const float *B, const ::size_t i)
+{
+	const v8sf * const row_b = (v8sf*)B;
+	v8sf * const row_c = (v8sf*)C;
+	const float *a = &A[i * AVX_FLOAT_SIZE];
+	v8sf item_a[8];
+	v8sf row_mul[8];
+	v8sf add[4];
+	v8sf bdd[2];
+
+	item_a[0] = _mm256_broadcast_ss(&a[0]);
+	item_a[1] = _mm256_broadcast_ss(&a[1]);
+	item_a[2] = _mm256_broadcast_ss(&a[2]);
+	item_a[3] = _mm256_broadcast_ss(&a[3]);
+	item_a[4] = _mm256_broadcast_ss(&a[4]);
+	item_a[5] = _mm256_broadcast_ss(&a[5]);
+	item_a[6] = _mm256_broadcast_ss(&a[6]);
+	item_a[7] = _mm256_broadcast_ss(&a[7]);
+
+	row_mul[0] = _mm256_mul_ps(item_a[0], row_b[0]);
+	row_mul[1] = _mm256_mul_ps(item_a[1], row_b[1]);
+	row_mul[2] = _mm256_mul_ps(item_a[2], row_b[2]);
+	row_mul[3] = _mm256_mul_ps(item_a[3], row_b[3]);
+	row_mul[4] = _mm256_mul_ps(item_a[4], row_b[4]);
+	row_mul[5] = _mm256_mul_ps(item_a[5], row_b[5]);
+	row_mul[6] = _mm256_mul_ps(item_a[6], row_b[6]);
+	row_mul[7] = _mm256_mul_ps(item_a[7], row_b[7]);
+		
+	add[0] = _mm256_add_ps(row_mul[0], row_mul[1]);
+	add[1] = _mm256_add_ps(row_mul[2], row_mul[3]);
+	add[2] = _mm256_add_ps(row_mul[4], row_mul[5]);
+	add[3] = _mm256_add_ps(row_mul[6], row_mul[7]);
+
+	bdd[0] = _mm256_add_ps(add[0], add[1]);
+	bdd[1] = _mm256_add_ps(add[2], add[3]);
+
+	row_c[i] = _mm256_add_ps(bdd[0], bdd[1]);
+}
+
+void
+matrix_mul_8x8_inner2(float *C, const float *A, const float *B) {
+	inner2_step(C, A, B, 0);
+	inner2_step(C, A, B, 1);
+	inner2_step(C, A, B, 2);
+	inner2_step(C, A, B, 3);
+	inner2_step(C, A, B, 4);
+	inner2_step(C, A, B, 5);
+	inner2_step(C, A, B, 6);
+	inner2_step(C, A, B, 7);
+}
 
 void
 matrix_mul_8x8_inner(float *C, const float *A, const float *B) {
@@ -118,6 +168,63 @@ matrix_mul_8x8_inner(float *C, const float *A, const float *B) {
 
 		row_c[i] = _mm256_add_ps(bdd[0], bdd[1]);
 	}
+}
+
+// Thanks to some mistaken optimization, there is a segfault if X is allocated on stack :-(
+static float X[AVX_FLOAT_SIZE * AVX_FLOAT_SIZE];
+
+static inline void row_mul_switched(float *C, const float *A, const v8sf row_b, const ::size_t i, const ::size_t j)
+{
+	const float *a = &A[i * AVX_FLOAT_SIZE + j];
+	const v8sf item_a = _mm256_broadcast_ss(a);
+	v8sf *row_mul = (v8sf*)&(j == 0 ? C : X)[i * AVX_FLOAT_SIZE];
+	*row_mul = _mm256_mul_ps(item_a, row_b);
+}
+
+static inline void row_add_switched(float *C, const ::size_t i)
+{
+	const v8sf *row_x = (v8sf*)&X[i * AVX_FLOAT_SIZE];
+	v8sf *row_c = (v8sf*)&C[i * AVX_FLOAT_SIZE];
+	*row_c = _mm256_add_ps(*row_x, *row_c);
+}
+
+
+static inline void col_switched(float *C, const float *A, const float *B, const ::size_t j)
+{
+	const v8sf *row_b = (v8sf*)&B[j * AVX_FLOAT_SIZE];
+
+	row_mul_switched(C, A, *row_b, 0, j);
+	row_mul_switched(C, A, *row_b, 1, j);
+	row_mul_switched(C, A, *row_b, 2, j);
+	row_mul_switched(C, A, *row_b, 3, j);
+	row_mul_switched(C, A, *row_b, 4, j);
+	row_mul_switched(C, A, *row_b, 5, j);
+	row_mul_switched(C, A, *row_b, 6, j);
+	row_mul_switched(C, A, *row_b, 7, j);
+
+	if (j == 0)
+		return;
+
+	row_add_switched(C, 0);
+	row_add_switched(C, 1);
+	row_add_switched(C, 2);
+	row_add_switched(C, 3);
+	row_add_switched(C, 4);
+	row_add_switched(C, 5);
+	row_add_switched(C, 6);
+	row_add_switched(C, 7);
+}
+
+void
+matrix_mul_8x8_switched(float *C, const float *A, const float *B) {
+	col_switched(C, A, B, 0);
+	col_switched(C, A, B, 1);
+	col_switched(C, A, B, 2);
+	col_switched(C, A, B, 3);
+	col_switched(C, A, B, 4);
+	col_switched(C, A, B, 5);
+	col_switched(C, A, B, 6);
+	col_switched(C, A, B, 7);
 }
 
 namespace {
@@ -164,7 +271,9 @@ float diff_arr(const float *a, const float *b, ::size_t len)
 int check_results(const float *correct, const float *x, const ::size_t len, const char *name) {
 	if (::memcmp(x, correct, len * sizeof(float)) && diff_arr(x, correct, len) >= 0.0001f) {
 		fprintf(stderr, "Results are different ... %s: %f\n", name, diff_arr(x, correct, len));
+		return 1;
 	}
+	return 0;
 }
 
 int
@@ -208,6 +317,22 @@ main(void) {
 	time_end = get_time();
 	fprintf(stderr, "AVX mul inner: %.6f\n", (time_end - time_beg)/1e6);
 	check_results(ZZZ, C, len, "AVX mul inner");
+
+	time_beg = get_time();
+	for (::size_t i = 0; i < len; i += 64) {
+		matrix_mul_8x8_inner2(&C[i], &A[i], &B[i]);
+	}
+	time_end = get_time();
+	fprintf(stderr, "AVX mul inner2: %.6f\n", (time_end - time_beg)/1e6);
+	check_results(ZZZ, C, len, "AVX mul inner2");
+
+	time_beg = get_time();
+	for (::size_t i = 0; i < len; i += 64) {
+		matrix_mul_8x8_switched(&C[i], &A[i], &B[i]);
+	}
+	time_end = get_time();
+	fprintf(stderr, "AVX mul switched: %.6f\n", (time_end - time_beg)/1e6);
+	check_results(ZZZ, C, len, "AVX mul switched");
 
 	time_beg = get_time();
 	for (::size_t i = 0; i < len; i += 64) {
