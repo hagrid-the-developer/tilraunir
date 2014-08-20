@@ -227,7 +227,68 @@ matrix_mul_8x8_switched(float *C, const float *A, const float *B) {
 	col_switched(C, A, B, 7);
 }
 
+#ifdef FMA
+
+void
+matrix_mul_8x8_fma(float *C, const float *A, const float *B) {
+	for (::size_t i = 0; i < AVX_FLOAT_SIZE; ++i) {
+		const float *a = &A[i * AVX_FLOAT_SIZE];
+		v8sf *row_c = (v8sf*)&C[i * AVX_FLOAT_SIZE];
+
+		for (::size_t j = 0; j < AVX_FLOAT_SIZE; ++j) {
+			const float *b = &B[j*AVX_FLOAT_SIZE];
+			v8sf item_a, row_b;
+			row_b = *(v8sf*)b;
+			item_a = _mm256_broadcast_ss(&a[j]);
+			if (j == 0) {
+				*row_c = _mm256_mul_ps(item_a, row_b);
+			} else {
+				*row_c = _mm256_fmadd_ps(row_mul, row_b, *row_c);
+			}
+		}
+	}
+}
+static inline void row_switched_fma(float *C, const float *A, const v8sf row_b, const ::size_t i, const ::size_t j)
+{
+	const float *a = &A[i * AVX_FLOAT_SIZE + j];
+	const v8sf item_a = _mm256_broadcast_ss(a);
+	v8sf *row_c = (v8sf*)&C[i * AVX_FLOAT_SIZE];
+	if (j == 0)
+		*row_c = _mm256_mul_ps(item_a, row_b);
+	else
+		*row_c = _mm256_fmad_ps(item_a, row_b, *row_c);
+}
+
+static inline void col_switched_fma(float *C, const float *A, const float *B, const ::size_t j)
+{
+	const v8sf *row_b = (v8sf*)&B[j * AVX_FLOAT_SIZE];
+
+	row_mul_switched(C, A, *row_b, 0, j);
+	row_mul_switched(C, A, *row_b, 1, j);
+	row_mul_switched(C, A, *row_b, 2, j);
+	row_mul_switched(C, A, *row_b, 3, j);
+	row_mul_switched(C, A, *row_b, 4, j);
+	row_mul_switched(C, A, *row_b, 5, j);
+	row_mul_switched(C, A, *row_b, 6, j);
+	row_mul_switched(C, A, *row_b, 7, j);
+}
+
+void
+matrix_mul_8x8_switched_fma(float *C, const float *A, const float *B) {
+	col_switched_fma(C, A, B, 0);
+	col_switched_fma(C, A, B, 1);
+	col_switched_fma(C, A, B, 2);
+	col_switched_fma(C, A, B, 3);
+	col_switched_fma(C, A, B, 4);
+	col_switched_fma(C, A, B, 5);
+	col_switched_fma(C, A, B, 6);
+	col_switched_fma(C, A, B, 7);
+}
+
+#endif
+
 namespace {
+
 void *align_alloc(const size_t alignment, const size_t size)
 {
 	void *ptr = NULL;
@@ -249,8 +310,6 @@ unsigned long long get_time() {
 
 	return tv.tv_sec * 1000000ULL + tv.tv_usec;
 }
-
-} /* Anonymous Namespace*/
 
 float diff_arr(const float *a, const float *b, ::size_t len)
 {
@@ -275,6 +334,8 @@ int check_results(const float *correct, const float *x, const ::size_t len, cons
 	}
 	return 0;
 }
+
+} /* Anonymous Namespace*/
 
 int
 main(void) {
