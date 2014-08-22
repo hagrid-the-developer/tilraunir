@@ -243,7 +243,7 @@ matrix_mul_8x8_fma(float *C, const float *A, const float *B) {
 			if (j == 0) {
 				*row_c = _mm256_mul_ps(item_a, row_b);
 			} else {
-				*row_c = _mm256_fmadd_ps(row_mul, row_b, *row_c);
+				*row_c = _mm256_fmadd_ps(item_a, row_b, *row_c);
 			}
 		}
 	}
@@ -256,21 +256,21 @@ static inline void row_switched_fma(float *C, const float *A, const v8sf row_b, 
 	if (j == 0)
 		*row_c = _mm256_mul_ps(item_a, row_b);
 	else
-		*row_c = _mm256_fmad_ps(item_a, row_b, *row_c);
+		*row_c = _mm256_fmadd_ps(item_a, row_b, *row_c);
 }
 
 static inline void col_switched_fma(float *C, const float *A, const float *B, const ::size_t j)
 {
 	const v8sf *row_b = (v8sf*)&B[j * AVX_FLOAT_SIZE];
 
-	row_mul_switched(C, A, *row_b, 0, j);
-	row_mul_switched(C, A, *row_b, 1, j);
-	row_mul_switched(C, A, *row_b, 2, j);
-	row_mul_switched(C, A, *row_b, 3, j);
-	row_mul_switched(C, A, *row_b, 4, j);
-	row_mul_switched(C, A, *row_b, 5, j);
-	row_mul_switched(C, A, *row_b, 6, j);
-	row_mul_switched(C, A, *row_b, 7, j);
+	row_switched_fma(C, A, *row_b, 0, j);
+	row_switched_fma(C, A, *row_b, 1, j);
+	row_switched_fma(C, A, *row_b, 2, j);
+	row_switched_fma(C, A, *row_b, 3, j);
+	row_switched_fma(C, A, *row_b, 4, j);
+	row_switched_fma(C, A, *row_b, 5, j);
+	row_switched_fma(C, A, *row_b, 6, j);
+	row_switched_fma(C, A, *row_b, 7, j);
 }
 
 void
@@ -402,6 +402,22 @@ main(void) {
 	time_end = get_time();
 	fprintf(stderr, "AVX mul outer: %.6f\n", (time_end - time_beg)/1e6);
 	check_results(ZZZ, C, len, "AVX mul outer");
+
+	time_beg = get_time();
+	for (::size_t i = 0; i < len; i += 64) {
+		matrix_mul_8x8_fma(&C[i], &A[i], &B[i]);
+	}
+	time_end = get_time();
+	fprintf(stderr, "AVX mul matrix_mul_8x8_fma: %.6f\n", (time_end - time_beg)/1e6);
+	check_results(ZZZ, C, len, "AVX mul matrix_mul_8x8_fma");
+
+	time_beg = get_time();
+	for (::size_t i = 0; i < len; i += 64) {
+		matrix_mul_8x8_switched_fma(&C[i], &A[i], &B[i]);
+	}
+	time_end = get_time();
+	fprintf(stderr, "AVX mul matrix_mul_8x8_switched_fma: %.6f\n", (time_end - time_beg)/1e6);
+	check_results(ZZZ, C, len, "AVX mul matrix_mul_8x8_switched_fma");
 
 	return 0;
 }
