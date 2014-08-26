@@ -527,6 +527,9 @@ int check_results(const float *correct, const float *x, const ::size_t len, cons
 
 int
 main(void) {
+	const int flags = _mm_getcsr();
+	_mm_setcsr(flags | 0x0040 | 0x8000);
+
 	static const ::size_t len = 256*1024*1024;
 	static const ::size_t size = len * sizeof(float);
 	static const ::size_t align = 256;
