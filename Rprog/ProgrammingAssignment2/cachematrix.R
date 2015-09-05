@@ -1,7 +1,7 @@
 ## These functions implement caching of calculation of inverse matrix
 ##
 
-## This function makes object with set. get, setinverse and getinverse methods.
+## This function makes object with set, get, setinverse and getinverse methods.
 
 makeCacheMatrix <- function(x = matrix()) {
 	x.inverse <- NULL
