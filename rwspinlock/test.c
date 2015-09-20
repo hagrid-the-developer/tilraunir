@@ -13,12 +13,12 @@
  *
  * * pthread spilock:
  *   - successful lock -> one atomic dec
- *   - unsecceful lock -> one atomic dec per attampt
+ *   - unsecceful lock -> one atomic dec per attempt
  *   - unlock -> one non-atomic assigment
  *
  * * rw spinlock:
  *   - successful lock -> one atomic sub
- *   - unsecceful lock -> one atomic sub, one atomic add per attempt
+ *   - unsecceful lock -> one atomic sub and one atomic add per attempt
  *   - unlock -> one atomic add
  */
 
