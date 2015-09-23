@@ -26,11 +26,11 @@ namespace {
 	float *rand_arr = new float[LEN];
 
 	template<typename F>
-	void run_test(const F &f, const char *name) {
+	void run_test(const F &f, const char *name, const bool various_align) {
 		RandomGenerator rand_gen;
 		Dist dist(-10.0, +10.0);
 
-		for (unsigned align = 0; align < 1; ++align) {
+		for (unsigned align = 0; align < (various_align ? 8 : 1); ++align) {
 			float *a = arr;
 			for (; reinterpret_cast< ::uintptr_t>(a) % 32 != align*4; ++a);
 
@@ -46,10 +46,12 @@ namespace {
 
 int
 main(void) {
-	run_test(rectifier_avx_1, "AVX_1");
-	run_test(rectifier_avx_2, "AVX_2");
-	run_test(rectifier_avx_3, "AVX_3");
-	run_test(rectifier_avx_4, "AVX_4");
-	run_test(rectifier_avx_5, "AVX_5");
+	run_test(rectifier_avx_1, "AVX_1", false);
+	run_test(rectifier_avx_2, "AVX_2", false);
+	run_test(rectifier_avx_3, "AVX_3", false);
+	run_test(rectifier_avx_4, "AVX_4", false);
+	run_test(rectifier_avx_5, "AVX_5", false);
+
+	run_test(rectifier_unaligned_avx_1, "unaligned AVX_1", true);
 	return 0;
 }

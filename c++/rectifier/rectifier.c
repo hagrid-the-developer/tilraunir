@@ -100,3 +100,15 @@ void rectifier_avx_6(float *a, const size_t len) {
 	rectifier_kernel_c(&a[blocks_num*8], len - blocks_num*8);
 }
 
+static inline void rectifier_unaligned_kernel_avx(float *a, const size_t blocks) {
+    for (size_t i = 0; i < blocks; ++i) {
+        _mm256_storeu_ps( &a[i*8], _mm256_max_ps( _mm256_loadu_ps( &a[i*8] ) , _mm256_setzero_ps() ) );
+    }
+}
+
+void rectifier_unaligned_avx_1(float *a, const size_t len) {
+	const size_t blocks_num = len/8;
+	rectifier_unaligned_kernel_avx(a, blocks_num);
+	rectifier_kernel_c(&a[blocks_num*8], len - blocks_num*8);
+}
+
