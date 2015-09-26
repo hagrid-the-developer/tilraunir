@@ -51,7 +51,11 @@ main(void) {
 	run_test(rectifier_avx_3, "AVX_3", false);
 	run_test(rectifier_avx_4, "AVX_4", false);
 	run_test(rectifier_avx_5, "AVX_5", false);
+	run_test(rectifier_avx_6, "AVX_6", false);
+	run_test(rectifier_avx_7, "AVX_7", false);
 
-	run_test(rectifier_unaligned_avx_1, "unaligned AVX_1", true);
+	run_test(rectifier_unaligned_avx_1, "unaligned_AVX_1", true);
+
+	run_test(rectifier_avx_asm_1, "unaligned_ASM_AVX_1", true);
 	return 0;
 }
