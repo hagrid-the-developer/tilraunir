@@ -4,15 +4,16 @@
 rectifier_avx_asm_1:
 	#rdi -- pointer to array
 	#rsi -- length of the array (number of floats)
-	vxorps %xmm0,%xmm0,%xmm0
-	mov %rsi, %r12
-	shr $0x3, %r12
+	vxorps %ymm0,%ymm0,%ymm0
+	lea (%rdi, %rsi, 4), %rdi
+	mov %rsi, %r11
+	shr $0x3, %r11
 1:	je 2f # if length/8 == 0
 	sub $0x20, %rdi
-	vmovups (%rdi), %xmm1
-	vmaxps %xmm0, %xmm1, %xmm1
-	vmovups %xmm1, (%rdi)
-	dec %r12
+	vmovups (%rdi), %ymm1
+	vmaxps %ymm0, %ymm1, %ymm1
+	vmovups %ymm1, (%rdi)
+	dec %r11
 	jmp 1b
 2:	mov %rsi, %r11
 	shr $0x3, %r11
@@ -21,7 +22,7 @@ rectifier_avx_asm_1:
 3:	je 4f
 	sub $0x4, %rdi
 	vmovss (%rdi), %xmm1
-	vmaxss %xmm0, %xmm1, %xmm1
+	vmaxss %xmm0, %xmm1, %xmm1 # xmm0 should be zero because ymm0 is zero
 	movss %xmm1, (%rdi)
 	dec %rsi
 	jmp 3b
