@@ -2,13 +2,17 @@
 #'
 #' @return Vector of values related to VAT. 
 
-czech.vat <- function(amount) {
-	vat = 0.21
-
+czech.vat <- function(amount, vat=0.21) {
 	vals <- c(amount, vat*amount, (1 + vat)*amount, vat)
+	names(val) <- c('without_vat', 'vat', 'with_vat', 'vat_value')
 
-	frm <- sapply(vals, function(x) format(x, digits=2, nsmall=2, decimal.mark=','))
-	names(frm) <- c('without_vat', 'vat', 'with_vat', 'vat_value')
+	vals
+}
 
-	frm
+format.for.tex <- function(x) {
+	format(x, digits=2, nsmall=2, decimal.mark='.', big.mark='\\,')
+}
+
+format.for.tex.wide <- function(x) {
+	format(x, digits=2, nsmall=2, decimal.mark='.', big.mark='\\ ')
 }
