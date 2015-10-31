@@ -4,7 +4,7 @@
 
 czech.vat <- function(amount, vat=0.21) {
 	vals <- c(amount, vat*amount, (1 + vat)*amount, vat)
-	names(val) <- c('without_vat', 'vat', 'with_vat', 'vat_value')
+	names(vals) <- c('without_vat', 'vat', 'with_vat', 'vat_value')
 
 	vals
 }
