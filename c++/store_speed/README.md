@@ -13,3 +13,6 @@ Output (Linux, Intel(R) Core(TM) i7-4790S CPU @3.20GHz, 16GB)
         ...time: 2.59323
     Test row -> col...
         ...time: 3.78816
+       
+
+@TODO: Stream store && AVX.       
