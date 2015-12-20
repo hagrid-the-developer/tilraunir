@@ -75,6 +75,10 @@ void src_row_col_stream_store(u32 $$[], const u32 $[]) noexcept {
 	}
 }
 
+/*
+ * This function is fastes, but note, that it uses 64bit for load and 64bit for store. It also reads data linearly.
+ *
+ */
 void src_row_col_stream_store2(u32 $$[], const u32 $[]) noexcept {
 	for (uns row = 0; row < ROWS_LEN; row += 8*2) {
 		for (uns col = 0; col < COLUMNS_LEN; ++col) {
