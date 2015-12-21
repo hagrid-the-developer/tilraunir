@@ -8,15 +8,21 @@ Output (Linux, Intel(R) Core(TM) i7-4790S CPU @3.20GHz, 16GB)
 
     $ /opt/gcc-5.2.0/bin/g++ -std=gnu++1y -mavx2 -Ofast -c store_speed.cpp
     $ /opt/gcc-5.2.0/bin/g++ -std=gnu++1y -Ofast -o store_speed store_speed.o
-    $ ./store_speed
+    $ LD_LIBRARY_PATH=/opt/gcc-5.2.0/lib64 ./store_speed
 
     Test col -> row...
-            ...time: 17.4934
+            ...time: 11.4504
     Test row -> col...
-            ...time: 12.9337
+            ...time: 11.1226
     Test col -> row stream store...
-            ...time: 3.15016
+            ...time: 3.09548
     Test row -> col stream store...
-            ...time: 2.10906
+            ...time: 1.55647
     Test row -> col stream store2...
-            ...time: 1.6595
+            ...time: 1.43606
+    Test put vector lin...
+            ...time: 0.185345
+    Test put_vec_skip...
+            ...time: 1.64256
+    Test put_vec2_skip...
+            ...time: 1.63718

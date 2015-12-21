@@ -59,6 +59,10 @@ void stream_store(u32 *$$, const u32 *$) noexcept {
 	_mm256_stream_ps(reinterpret_cast<float*>($$), *reinterpret_cast<const __m256*>($));
 }
 
+void stream_store_zero(u32 *$$) noexcept {
+	_mm256_stream_ps(reinterpret_cast<float*>($$), _mm256_setzero_ps());
+}
+
 void src_col_row_stream_store(u32 $$[], const u32 $[]) noexcept {
 	for (uns col = 0; col < COLUMNS_LEN; ++col) {
 		for (uns row = 0; row < ROWS_LEN; row += 8) {
@@ -76,7 +80,7 @@ void src_row_col_stream_store(u32 $$[], const u32 $[]) noexcept {
 }
 
 /*
- * This function is fastes, but note, that it uses 64bit for load and 64bit for store. It also reads data linearly.
+ * This function is fastes, but note, that it uses 64bit for load and 64bit for store. It doesn't read data linearly.
  *
  */
 void src_row_col_stream_store2(u32 $$[], const u32 $[]) noexcept {
@@ -84,6 +88,33 @@ void src_row_col_stream_store2(u32 $$[], const u32 $[]) noexcept {
 		for (uns col = 0; col < COLUMNS_LEN; ++col) {
 			stream_store(&$$[row + col*ROWS_LEN], &$[(col & ~(ALIGNMENT - 1)) + row*ROWS_LEN]);
 			stream_store(&$$[row + 8 + col*ROWS_LEN], &$[(col & ~(ALIGNMENT - 1)) + (row + 8)*ROWS_LEN]);
+		}
+	}
+}
+
+/*
+ * Store of zero vector to an array.
+ */
+
+void put_vec_linearly(u32 $$[]) noexcept {
+	for (uns i = 0; i < LEN; i += 8) {
+		stream_store_zero(&$$[i]);
+	}
+}
+
+void put_vec_skip(u32 $$[]) noexcept {
+	for (uns i = 0; i < ROWS_LEN; i += 8) {
+		for (uns j = 0; j < COLUMNS_LEN; ++j) {
+			stream_store_zero(&$$[i + j*ROWS_LEN]);
+		}
+	}
+}
+
+void put_vec2_skip(u32 $$[]) noexcept {
+	for (uns i = 0; i < ROWS_LEN; i += 16) {
+		for (uns j = 0; j < COLUMNS_LEN; ++j) {
+			stream_store_zero(&$$[i + j*ROWS_LEN]);
+			stream_store_zero(&$$[i + j*ROWS_LEN + 8]);
 		}
 	}
 }
@@ -114,6 +145,21 @@ double run_test(F f) noexcept {
 	return time_end - time_beg;
 }
 
+typedef void (*G)(u32 $$[]);
+double run_test_put_vector(G f) noexcept {
+	auto unaligned_dst = $::make_unique<u32[]>(LEN + ALIGNMENT - 1);
+
+	u32 *dst = align(&unaligned_dst[0]);
+
+	$::generate(&dst[0], &dst[LEN], []() -> u32 { dist(rand); });
+
+	const double time_beg = getrealtime();
+	f(&dst[0]);
+	const double time_end = getrealtime();
+
+	return time_end - time_beg;
+}
+
 } /* anonymous namespace */
 
 int
@@ -132,6 +178,15 @@ main(void) {
 
 	$::cerr << "Test row -> col stream store2..." << $::endl;
 	$::cerr << "\t...time: " << run_test(src_row_col_stream_store2) << $::endl;
+
+	$::cerr << "Test put vector lin..." << $::endl;
+	$::cerr << "\t...time: " << run_test_put_vector(put_vec_linearly) << $::endl;
+
+	$::cerr << "Test put_vec_skip..." << $::endl;
+	$::cerr << "\t...time: " << run_test_put_vector(put_vec_skip) << $::endl;
+
+	$::cerr << "Test put_vec2_skip..." << $::endl;
+	$::cerr << "\t...time: " << run_test_put_vector(put_vec2_skip) << $::endl;
 
 	return 0;
 }
