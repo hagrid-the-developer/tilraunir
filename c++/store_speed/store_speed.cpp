@@ -59,10 +59,6 @@ void stream_store(u32 *$$, const u32 *$) noexcept {
 	_mm256_stream_ps(reinterpret_cast<float*>($$), *reinterpret_cast<const __m256*>($));
 }
 
-void stream_store_zero(u32 *$$) noexcept {
-	_mm256_stream_ps(reinterpret_cast<float*>($$), _mm256_setzero_ps());
-}
-
 void src_col_row_stream_store(u32 $$[], const u32 $[]) noexcept {
 	for (uns col = 0; col < COLUMNS_LEN; ++col) {
 		for (uns row = 0; row < ROWS_LEN; row += 8) {
@@ -96,6 +92,10 @@ void src_row_col_stream_store2(u32 $$[], const u32 $[]) noexcept {
  * Store of zero vector to an array.
  */
 
+void stream_store_zero(u32 *$$) noexcept {
+	_mm256_stream_ps(reinterpret_cast<float*>($$), _mm256_setzero_ps());
+}
+
 void put_vec_linearly(u32 $$[]) noexcept {
 	for (uns i = 0; i < LEN; i += 8) {
 		stream_store_zero(&$$[i]);
@@ -115,6 +115,32 @@ void put_vec2_skip(u32 $$[]) noexcept {
 		for (uns j = 0; j < COLUMNS_LEN; ++j) {
 			stream_store_zero(&$$[i + j*ROWS_LEN]);
 			stream_store_zero(&$$[i + j*ROWS_LEN + 8]);
+		}
+	}
+}
+
+void put_vec_linearly_sfence(u32 $$[]) noexcept {
+	for (uns i = 0; i < LEN; i += 8) {
+		stream_store_zero(&$$[i]);
+		_mm_sfence();
+	}
+}
+
+void put_vec_skip_sfence(u32 $$[]) noexcept {
+	for (uns i = 0; i < ROWS_LEN; i += 8) {
+		for (uns j = 0; j < COLUMNS_LEN; ++j) {
+			stream_store_zero(&$$[i + j*ROWS_LEN]);
+			_mm_sfence();
+		}
+	}
+}
+
+void put_vec2_skip_sfence(u32 $$[]) noexcept {
+	for (uns i = 0; i < ROWS_LEN; i += 16) {
+		for (uns j = 0; j < COLUMNS_LEN; ++j) {
+			stream_store_zero(&$$[i + j*ROWS_LEN]);
+			stream_store_zero(&$$[i + j*ROWS_LEN + 8]);
+			_mm_sfence();
 		}
 	}
 }
@@ -146,7 +172,7 @@ double run_test(F f) noexcept {
 }
 
 typedef void (*G)(u32 $$[]);
-double run_test_put_vector(G f) noexcept {
+double run_test_put_vector(G g) noexcept {
 	auto unaligned_dst = $::make_unique<u32[]>(LEN + ALIGNMENT - 1);
 
 	u32 *dst = align(&unaligned_dst[0]);
@@ -154,7 +180,7 @@ double run_test_put_vector(G f) noexcept {
 	$::generate(&dst[0], &dst[LEN], []() -> u32 { dist(rand); });
 
 	const double time_beg = getrealtime();
-	f(&dst[0]);
+	g(&dst[0]);
 	const double time_end = getrealtime();
 
 	return time_end - time_beg;
@@ -187,6 +213,15 @@ main(void) {
 
 	$::cerr << "Test put_vec2_skip..." << $::endl;
 	$::cerr << "\t...time: " << run_test_put_vector(put_vec2_skip) << $::endl;
+
+	$::cerr << "Test put vector lin sfence..." << $::endl;
+	$::cerr << "\t...time: " << run_test_put_vector(put_vec_linearly_sfence) << $::endl;
+
+	$::cerr << "Test put_vec_skip sfence..." << $::endl;
+	$::cerr << "\t...time: " << run_test_put_vector(put_vec_skip_sfence) << $::endl;
+
+	$::cerr << "Test put_vec2_skip sfence..." << $::endl;
+	$::cerr << "\t...time: " << run_test_put_vector(put_vec2_skip_sfence) << $::endl;
 
 	return 0;
 }
