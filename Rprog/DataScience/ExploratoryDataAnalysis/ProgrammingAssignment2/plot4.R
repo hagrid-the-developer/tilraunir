@@ -10,10 +10,10 @@ plot.4 <- function() {
 	sources <- as.character( scc$scc[ intersect(grep('coal', scc$name, ignore.case=TRUE), grep('combustion', scc$name, ignore.case=TRUE)) ] )
 
 	# We want only items from coal combustion sources.
-	NEI <- NEI[NEI$SCC == sources,]
+	NEI <- NEI[NEI$SCC %in% sources,]
 
-	dt <- aggregate(Emissions ~ year + type, data=NEI, FUN=sum)
-	ggplot(dt, aes(x=factor(year), y=log(Emissions), group=1)) + geom_point(stat = 'identity', size = 2) + geom_line()
+	dt <- aggregate(Emissions ~ year, data=NEI, FUN=sum)
+	ggplot(dt, aes(x=factor(year), y=Emissions, group=1)) + geom_point(stat = 'identity', size = 2) + geom_line()
 }
 
 #plot.4()
