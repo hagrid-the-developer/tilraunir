@@ -15,7 +15,12 @@ plot.5 <- function() {
 	NEI <- NEI[NEI$fips == '24510',]
 
 	dt <- aggregate(Emissions ~ year, data=NEI, FUN=sum)
-	ggplot(dt, aes(x=factor(year), y=Emissions, group=1)) + geom_point(stat = 'identity', size = 2) + geom_line()
+	ggplot(dt, aes(x=year, y=Emissions, group=1)) + geom_point(stat = 'identity', size = 2) + geom_line() +
+		ggtitle('Emissions from motor vehicle sources\n(in Baltimore City)') +
+		scale_x_continuous(name='Year') +
+		scale_y_continuous(name='Emissions (tons)')
+
+	ggsave('plot5.png', width=7, height=7)
 }
 
-#plot.5()
+plot.5()

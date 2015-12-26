@@ -1,6 +1,6 @@
 library(ggplot2)
 
-# 2810025000 -- Is charcola a coal?
+# 2810025000 -- Is charcoal a coal?
 
 plot.4 <- function() {
 	NEI <- readRDS("summarySCC_PM25.rds")
@@ -13,7 +13,13 @@ plot.4 <- function() {
 	NEI <- NEI[NEI$SCC %in% sources,]
 
 	dt <- aggregate(Emissions ~ year, data=NEI, FUN=sum)
-	ggplot(dt, aes(x=factor(year), y=Emissions, group=1)) + geom_point(stat = 'identity', size = 2) + geom_line()
+	ggplot(dt, aes(x=year, y=Emissions/1000, group=1)) + geom_point(stat = 'identity', size = 2) + geom_line() +
+		ggtitle('Emissions from coal combustion-related sources\n(in United States)') +
+		theme(axis.text.y=element_text(angle=90, hjust=1/2)) +
+		scale_x_continuous(name='Year') +
+		scale_y_continuous(name='Emissions (thousands of tons)')
+
+	ggsave('plot4.png', width=7, height=7)
 }
 
-#plot.4()
+plot.4()

@@ -3,7 +3,10 @@ plot.1 <- function() {
 	SCC <- readRDS("Source_Classification_Code.rds")
 
 	dt <- aggregate(Emissions ~ year, data=NEI, FUN=sum)
-	barplot(dt$Emissions/10^6, names.arg=dt$year, xlab='Year', ylab='Emissions (millinons of tons)')
+
+	png('plot1.png', width=777, height=888, bg='transparent')
+	barplot(dt$Emissions/10^6, names.arg=dt$year, col='royalblue1', xlab='Year', ylab='Emissions (millinons of tons)', main='Total Emissions in United States')
+	dev.off()
 }
 
-#plot.1()
+plot.1()

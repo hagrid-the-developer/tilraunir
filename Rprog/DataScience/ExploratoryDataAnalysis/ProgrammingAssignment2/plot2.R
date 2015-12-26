@@ -6,7 +6,10 @@ plot.2 <- function() {
 	NEI <- NEI[NEI$fips == '24510',]
 
 	dt <- aggregate(Emissions ~ year, data=NEI, FUN=sum)
-	barplot(dt$Emissions, names.arg=dt$year, xlab='Year', ylab='Emissions')
+
+	png('plot2.png', width=777, height=888, bg='transparent')
+	barplot(dt$Emissions, names.arg=dt$year, col='royalblue1', xlab='Year', ylab='Emissions (tons)', main='Total Emissions in Baltimore City')
+	dev.off()
 }
 
-#plot.2()
+plot.2()
