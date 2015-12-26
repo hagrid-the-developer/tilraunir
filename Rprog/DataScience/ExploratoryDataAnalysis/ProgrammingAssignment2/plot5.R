@@ -1,6 +1,6 @@
 library(ggplot2)
 
-plot.6 <- function() {
+plot.5 <- function() {
 	NEI <- readRDS("summarySCC_PM25.rds")
 	SCC <- readRDS("Source_Classification_Code.rds")
 
@@ -10,16 +10,12 @@ plot.6 <- function() {
 
 	# We want only items from motor vehicle sources.
 	NEI <- NEI[NEI$SCC %in% sources,]
-	#NEI <- NEI[NEI$type == 'ON-ROAD', ]
 
-	# We want only items for Baltimore city and Los Angeles County.
-	NEI <- NEI[NEI$fips %in% c('24510', '06037'),]
+	# We want only items for Baltimore city.
+	NEI <- NEI[NEI$fips == '24510',]
 
-	# Add name of the city
-	NEI$City <- ifelse(NEI$fips == '24510', 'Baltimore City', 'Los Angeles County')
-
-	dt <- aggregate(Emissions ~ year + City, data=NEI, FUN=sum)
-	ggplot(dt, aes(x=factor(year), y=Emissions, group=1)) + geom_point(stat = 'identity', size = 2) + geom_line() + facet_grid(. ~ City)
+	dt <- aggregate(Emissions ~ year, data=NEI, FUN=sum)
+	ggplot(dt, aes(x=factor(year), y=Emissions, group=1)) + geom_point(stat = 'identity', size = 2) + geom_line()
 }
 
-#plot.6()
+#plot.5()
