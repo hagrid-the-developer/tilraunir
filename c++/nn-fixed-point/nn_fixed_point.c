@@ -3,18 +3,20 @@
 
 #include "nn_fixed_point.h"
 
-void cache_block_over_inputs(const u8 *w, const u8 *inputs, const u8 *outputs, const uns w_len, const uns cache_blocking_len) {
+#define CACHE_BLOCKING_LEN 333
+
+void cache_block_over_inputs(const u8 *w, const u8 *inputs, const u8 *outputs, const uns w_len) {
 	assert(w_len % AVX_U8_VEC_LEN == 0);
-	assert(cache_blocking_len % AVX_U8_VEC_LEN == 0);
-	assert(cache_blocking_len > 0);
+	assert(CACHE_BLOCKING_LEN % AVX_U8_VEC_LEN == 0);
+	assert(CACHE_BLOCKING_LEN > 0);
 
 
-	__m256i part_results[cache_blocking_len];
+	__m256i part_results[CACHE_BLOCKING_LEN];
 
-	for (uns index = 0; index < w_len; index += cache_blocking_len) {
-		const uns jndex_end = MIN(w_len, index + cache_blocking_len);
+	for (uns index = 0; index < w_len; index += CACHE_BLOCKING_LEN) {
+		const uns jndex_end = MIN(w_len, index + CACHE_BLOCKING_LEN);
 
-		for (uns cb_index = 0; cb_index < cache_blocking_len; ++cb_index) {
+		for (uns cb_index = 0; cb_index < CACHE_BLOCKING_LEN; ++cb_index) {
 			for (uns jndex = index; jndex < jndex_end; jndex += AVX_U8_VEC_LEN) {
 				const __m256i *weight = (__m256i*) &w[jndex + cb_index*w_len];
 				const __m256i *input = (__m256i*) &input[jndex];
@@ -26,7 +28,7 @@ void cache_block_over_inputs(const u8 *w, const u8 *inputs, const u8 *outputs, c
 		}
 	}
 
-	for (uns cb_index = 0; cb_index < cache_blocking_len; cb_index += cache_blocking_len) {
+	for (uns cb_index = 0; cb_index < CACHE_BLOCKING_LEN; cb_index += CACHE_BLOCKING_LEN) {
 		// _mm256_permute2x128_si256: http://www.felixcloutier.com/x86/VPERM2I128.html
 		// _mm256_shuffle_epi8: https://software.intel.com/en-us/node/582929
 		// _mm256_hadds_epi16: https://software.intel.com/en-us/node/582799, http://www.felixcloutier.com/x86/PHADDSW.html
@@ -88,6 +90,6 @@ void cache_block_over_inputs(const u8 *w, const u8 *inputs, const u8 *outputs, c
 	}
 }
 
-void cache_block_over_inputs_floats(const u8 *weights, const u8 *inputs, const uns w_len, const uns cache_blocking_len) {
+void cache_block_over_inputs_floats(const u8 *weights, const u8 *inputs, const uns w_len, const uns CACHE_BLOCKING_LEN) {
 
 }
