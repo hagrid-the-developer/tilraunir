@@ -1,6 +1,8 @@
 #include <immintrin.h>
 #include <assert>
 
+#include "nn_fixed_point.h"
+
 void cache_block_over_inputs(const u8 *w, const u8 *inputs, const u8 *outputs, const uns w_len, const uns cache_blocking_len) {
 	assert(w_len % AVX_U8_VEC_LEN == 0);
 	assert(cache_blocking_len % AVX_U8_VEC_LEN == 0);
