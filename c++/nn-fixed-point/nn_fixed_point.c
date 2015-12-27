@@ -3,20 +3,21 @@
 
 #include "nn_fixed_point.h"
 
-#define CACHE_BLOCKING_LEN 333
+#define CACHE_BLOCKING_LEN 500
 
-void cache_block_over_inputs(const u8 *w, const u8 *inputs, const u8 *outputs, const uns w_len) {
+uns cache_block_over_inputs(const u8 *w, const u8 *inputs, const u8 *outputs, const uns w_len, const uns outputs_len) {
+	assert(outputs_len > 0);
+	assert(outputs_len % AVX_U8_VEC_LEN == 0);
 	assert(w_len % AVX_U8_VEC_LEN == 0);
-	assert(CACHE_BLOCKING_LEN % AVX_U8_VEC_LEN == 0);
-	assert(CACHE_BLOCKING_LEN > 0);
-
 
 	__m256i part_results[CACHE_BLOCKING_LEN];
 
-	for (uns index = 0; index < w_len; index += CACHE_BLOCKING_LEN) {
-		const uns jndex_end = MIN(w_len, index + CACHE_BLOCKING_LEN);
+	const uns cache_blocking_len = MIN(outputs_len, cache_blocking_len);
 
-		for (uns cb_index = 0; cb_index < CACHE_BLOCKING_LEN; ++cb_index) {
+	for (uns index = 0; index < w_len; index += cache_blocking_len) {
+		const uns jndex_end = MIN(w_len, index + cache_blocking_len);
+
+		for (uns cb_index = 0; cb_index < cache_blocking_len; ++cb_index) {
 			for (uns jndex = index; jndex < jndex_end; jndex += AVX_U8_VEC_LEN) {
 				const __m256i *weight = (__m256i*) &w[jndex + cb_index*w_len];
 				const __m256i *input = (__m256i*) &input[jndex];
@@ -28,7 +29,7 @@ void cache_block_over_inputs(const u8 *w, const u8 *inputs, const u8 *outputs, c
 		}
 	}
 
-	for (uns cb_index = 0; cb_index < CACHE_BLOCKING_LEN; cb_index += CACHE_BLOCKING_LEN) {
+	for (uns cb_index = 0; cb_index < cache_blocking_len; cb_index += cache_blocking_len) {
 		// _mm256_permute2x128_si256: http://www.felixcloutier.com/x86/VPERM2I128.html
 		// _mm256_shuffle_epi8: https://software.intel.com/en-us/node/582929
 		// _mm256_hadds_epi16: https://software.intel.com/en-us/node/582799, http://www.felixcloutier.com/x86/PHADDSW.html
@@ -43,7 +44,6 @@ void cache_block_over_inputs(const u8 *w, const u8 *inputs, const u8 *outputs, c
 	const __m256i x##X = part_results[cb_index + X]; \
 	const __m256i x##Y = part_results[cb_index + Y]; \
 	__m256i sum##X = _mm256_adds_epi16( _mm256_permute2x128_si256(x##X, x##Y, 0x20), _mm256_permute2x128_si256(x##X, x##Y, 0x31) )	
-
 		SUM_2x128(0, 1);
 		SUM_2x128(2, 3);
 		SUM_2x128(4, 5);
@@ -52,14 +52,12 @@ void cache_block_over_inputs(const u8 *w, const u8 *inputs, const u8 *outputs, c
 		SUM_2x128(10, 11);
 		SUM_2x128(12, 13);
 		SUM_2x128(14, 15);
-
 #undef SUM_2x128
 
 		// Create 4 64bit parts with 16bit integers.
 #define SUM_4x64(X, Y) \
 	sum##X = _mm256_adds_epi16(_mm256_permute2x128_si256(_mm256_permute4x64_epi64(sum##X, 0x20), _mm256_permute4x64_epi64(sum##Y, 0x20), 0x20), \
 				_mm256_permute2x128_si256(_mm256_permute4x64_epi64(sum##X, 0x31), _mm256_permute4x64_epi64(sum##Y, 0x31), 0x20))
-
 		SUM_4x64(0, 2);
 		SUM_4x64(4, 6);
 		SUM_4x64(8, 10);
@@ -72,7 +70,6 @@ void cache_block_over_inputs(const u8 *w, const u8 *inputs, const u8 *outputs, c
 							     _mm256_permutevar8x32_epi32(x##Y, _mm256_setr_epi32(0, 0, 0, 0, 6, 4, 2, 0)), 0x20), \
 				   _mm256_permute2x128_si256(_mm256_permutevar8x32_epi32(x##X, _mm256_setr_epi32(0, 0, 0, 0, 7, 5, 3, 1)), \
 					   		     _mm256_permutevar8x32_epi32(x##Y, _mm256_setr_epi32(0, 0, 0, 0, 7, 5, 3, 1)), 0x20))
-
 		SUM_8x32(0, 4);
 		SUM_8x32(8, 12);
 #undef SUM_8x32
@@ -88,8 +85,10 @@ void cache_block_over_inputs(const u8 *w, const u8 *inputs, const u8 *outputs, c
 		// stream store, type conversions seem ugly...
 		_mm_stream_ps((float*)&outputs[cb_index], (__m128)_mm256_castsi256_si128(sum0));
 	}
+
+	return cache_blocking_len;
 }
 
-void cache_block_over_inputs_floats(const u8 *weights, const u8 *inputs, const uns w_len, const uns CACHE_BLOCKING_LEN) {
-
+uns cache_block_over_inputs_floats(const u8 *weights, const u8 *inputs, const uns w_len, const uns outputs_len) {
+	return MIN(outputs_len, CACHE_BLOCKING_LEN);
 }

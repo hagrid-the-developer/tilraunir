@@ -13,5 +13,8 @@ all:
 nn_fixed_point.o: nn_fixed_point.c nn_fixed_point.h
 	$(COMPILE.c)
 
+test.o: test.cpp nn_fixed_point.h  nn_fixed_point.hpp
+	$(COMPILE.cpp)
+
 clean:
 	rm -vf *.o
