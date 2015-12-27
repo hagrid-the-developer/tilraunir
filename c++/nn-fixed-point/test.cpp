@@ -18,7 +18,7 @@ const uns W_LEN = 10000;
 const uns OUTPUTS_LEN = 2000;
 const uns ALIGNMENT_U8 = 32;
 
-u32 *align(u32 *$) noexcept {
+u8 *align(u8 *$) noexcept {
 	const ::uintptr_t ALGNMNT = ALIGNMENT * sizeof(u32);
 
 	::uintptr_t _ = reinterpret_cast<::uintptr_t>($);
