@@ -58,5 +58,13 @@ double run_test(F f) noexcept {
 } /* anonymous namespace */
 
 int main(void) {
+#define DO_TEST(TEST_FUNC) do { \
+	$::cerr << #TEST_FUNC << "..." << $::endl; \
+	const auto TEST_FUNC ## _time = run_test(TEST_FUNC); \
+	$::cout << "Test:" << #TEST_FUNC << "; time:" << TEST_FUNC ## _time << ";" << $::endl; \
+} while(0)
+	DO_TEST(::cache_block_over_inputs);
+#undef DO_TEST
+
 	return 0;
 }
