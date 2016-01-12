@@ -8,7 +8,7 @@ CXXFLAGS = -std=gnu++1y
 
 COMPILE.c = $(CC) $(CFLAGS) -o $@ -c $<
 COMPILE.cpp = $(CXX) $(CFLAGS:-std%=) $(CXXFLAGS) -o $@ -c $<
-LINK.o = $(CC) -o $@ $^
+LINK.o = $(CXX) -o $@ $^
 
 all: test
 

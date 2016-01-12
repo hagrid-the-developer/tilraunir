@@ -61,8 +61,8 @@ double run_test(F f) noexcept {
 int main(void) {
 #define DO_TEST(TEST_FUNC) do { \
 	$::cerr << #TEST_FUNC << "..." << $::endl; \
-	const auto TEST_FUNC ## _time = run_test(TEST_FUNC); \
-	$::cout << "Test:" << #TEST_FUNC << "; time:" << TEST_FUNC ## _time << ";" << $::endl; \
+	const auto time = run_test(TEST_FUNC); \
+	$::cout << "Test:" << #TEST_FUNC << "; time:" << time << ";" << $::endl; \
 } while(0)
 	DO_TEST(::cache_block_over_inputs_tdnn);
 #undef DO_TEST
