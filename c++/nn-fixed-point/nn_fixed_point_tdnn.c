@@ -5,19 +5,18 @@
 
 #define CACHE_BLOCKING_LEN 100
 
-uns cache_block_over_inputs_tdnn(const u8 *w, const u8 *inputs, const u8 *outputs, const uns w_len, const uns outputs_len) {
+uint64_t cache_block_over_inputs_tdnn(const u8 *w, const u8 *inputs, const u8 *outputs, const uns w_len, const uns outputs_len) {
 	assert(outputs_len > 0);
 	assert(outputs_len % AVX_U8_VEC_LEN == 0);
 	assert(w_len % AVX_U8_VEC_LEN == 0);
+	assert(outputs_len >= CACHE_BLOCKING_LEN);
 
 	__m256i part_results[2*CACHE_BLOCKING_LEN];
 
-	const uns cache_blocking_len = MIN(outputs_len, CACHE_BLOCKING_LEN);
+	for (uns index = 0; index < w_len; index += CACHE_BLOCKING_LEN) {
+		const uns jndex_end = MIN(w_len, index + CACHE_BLOCKING_LEN);
 
-	for (uns index = 0; index < w_len; index += cache_blocking_len) {
-		const uns jndex_end = MIN(w_len, index + cache_blocking_len);
-
-		for (uns cb_index = 0; cb_index < cache_blocking_len; ++cb_index) {
+		for (uns cb_index = 0; cb_index < CACHE_BLOCKING_LEN; ++cb_index) {
 			for (uns jndex = index; jndex < jndex_end; jndex += AVX_U8_VEC_LEN) {
 				const __m256i *weight = (__m256i*) &w[jndex + cb_index*w_len];
 				{
@@ -36,5 +35,5 @@ uns cache_block_over_inputs_tdnn(const u8 *w, const u8 *inputs, const u8 *output
 		}
 	}
 
-	return cache_blocking_len;
+	return (uint64_t)CACHE_BLOCKING_LEN * w_len * 2;
 }
