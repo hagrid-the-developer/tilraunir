@@ -46,7 +46,7 @@ double run_test(F f) noexcept {
 	u8 *weights = align(&unaligned_weights[0]);
 	//u8 *outputs = align(&unaligned_outputs[0]);
 
-	$::generate(&inputs[0], &inputs[W_LEN], []() -> u8 { dist(rand); });
+	$::generate(&inputs[0], &inputs[2*W_LEN], []() -> u8 { dist(rand); });
 	$::generate(&weights[0], &weights[W_LEN*OUTPUTS_LEN], []() -> u8 { dist(rand); });
 	//$::generate(&outputs[0], &outputs[OUTPUTS_LEN], []() -> u8 { dist(rand); });
 
@@ -58,6 +58,8 @@ double run_test(F f) noexcept {
 		if (time_end >= time_beg + 5)
 			return weights_num / (time_end - time_beg);
 	}
+
+	return 0.0;
 }
 
 $::string speed_to_str(double speed) noexcept {
