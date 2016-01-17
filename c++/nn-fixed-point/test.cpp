@@ -16,7 +16,7 @@ typedef $::uniform_int_distribution<u8> Dist;
 RandomGenerator rand;
 Dist dist(0, 255);
 
-const uns W_LEN = 1024;
+const uns W_LEN = 2*1024;
 const uns OUTPUTS_LEN = 2048;
 const uns ALIGNMENT_U8 = 32;
 
