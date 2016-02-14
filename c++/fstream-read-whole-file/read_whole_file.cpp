@@ -1,3 +1,9 @@
+/*
+ * $ g++ -std=gnu++1y -o read_whole_file read_whole_file.cpp
+ * $ ./read_whole_file 001.txt
+ * 
+ */
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
