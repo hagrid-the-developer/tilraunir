@@ -1,6 +1,6 @@
 /*
  * $ g++ -std=c++11 -o stringstream-parser stringstream-parser.cpp
- * $ ./stringstream-parser
+ * $ ./stringstream-parsert push
  */
 
 #include <iostream>
