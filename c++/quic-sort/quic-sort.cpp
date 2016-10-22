@@ -1,7 +1,11 @@
 /*
  * $ g++ -std=gnu++11 quic-sort.cpp -o quic-sort
  * $ ./quic-sort 1000003 2; echo $?
- *
+ * 
+ * Doc:
+ *   http://www.algoritmy.net/article/10/Quicksort
+ *   https://en.wikipedia.org/wiki/Quicksort
+ *   https://cs.wikipedia.org/wiki/Quicksort
  */
 
 #include <algorithm>
