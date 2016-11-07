@@ -35,7 +35,7 @@ static int call_sgemm(const unsigned m, const unsigned n, const unsigned k) {
 		1.0, pWeights, int(units),                            // alpha, A, lead_dim_A
 		&ia[shift * inp.items], int(inputs),               // B, lead_dim_B
 		1.0, &oa[shift * out.items], int(delays * units)); // beta, C, lead_dim_C
-#endif
+#	endif
 
 	return 0;
 }
