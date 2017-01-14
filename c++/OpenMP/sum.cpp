@@ -10,7 +10,7 @@ namespace {
 template <typename T>
 $::vector<T> rand_vec(const ::size_t len) {
 	$::vector<T> $$(len); 
-	#pragma omp parallel
+	#pragma omp for
 	for (::size_t i = 0; i < len; ++i) {
 		$$[i] = (i % 1024) / 1024.f;
 	}
@@ -20,7 +20,7 @@ $::vector<T> rand_vec(const ::size_t len) {
 float simple_sum(const ::size_t len) {
 	$::vector<float> vec = rand_vec<float>(len);
 	float sum = 0.f;
-	#pragma omp parallel for reduction(+:sum)
+	#pragma omp for reduction(+:sum)
 	for (::size_t i = 0; i < len; ++i) {
 		sum += vec[i];
 	}
@@ -70,13 +70,14 @@ Float big_sum(const ::size_t len) {
 
 int
 main(void) {
+	#pragma omp parallel
 	{
 		const float sum = simple_sum(1'000'000'000);
 		$::cerr << "sum: " << sum << ";" << $::endl;
 	}
-	{
+/*	{
 		const Float sum = big_sum(1'000'000'000);
 		$::cerr << "sum: " << *sum << ";" << $::endl;
-	}
+	}*/
 	return 0;
 }
