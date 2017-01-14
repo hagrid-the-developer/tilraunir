@@ -1,0 +1,5 @@
+{
+global:
+	_ZN3XYZ4xyz1Ev; _ZN3XYZ4xyz2Ev;
+local: *;
+};
