@@ -69,6 +69,22 @@ template <typename T>
 		return _mm_cvtsi128_si64(res0.i4_);
 }
 
+::uint64_t sse_int(const SSE x0, const SSE x1) {
+		__m128i in0 = x0.i4_;
+		__m128i in1 = x1.i4_;
+
+		__m128i xor64_0 = _mm_unpackhi_epi64(in0, in1);
+		__m128i xor64_1 = _mm_unpacklo_epi64(in0, in1);
+
+		__m128i xor64 = _mm_xor_si128(xor64_0, xor64_1);
+
+		__m128i xor32_0 = _mm_shuffle_epi32(xor64, _MM_SHUFFLE(3, 1, 2, 0));
+		__m128i xor32_1 = _mm_shuffle_epi32(xor64, _MM_SHUFFLE(2, 0, 3, 1));
+		__m128i xor32 = _mm_xor_si128(xor32_0, xor32_1);
+
+		return _mm_cvtsi128_si64(xor32);
+}
+
 ::uint64_t avx(AVX x0, AVX x1) {
 	x0.sse_[0].i4_ = _mm_xor_si128(x0.sse_[0].i4_, SSE{.f4_ = _mm256_extractf128_ps(x0.f8_, 1)}.i4_);
 	x1.sse_[0].i4_ = _mm_xor_si128(x1.sse_[0].i4_, SSE{.f4_ = _mm256_extractf128_ps(x1.f8_, 1)}.i4_);
@@ -101,10 +117,11 @@ bool run_sse() {
 	const SSE x1 = init<SSE>();
 	const auto val0 = naive(x0, x1);
 	const auto val1 = sse(x0, x1);
+	const auto val2 = sse_int(x0, x1);
 	
-	fprintf(stderr, "SSE: x0:%s x1:%s val0:0x%.16jx val1:0x%.16jx\n", $$($(x0)), $$($(x1)), ::uintmax_t(val0), ::uintmax_t(val1));
+	fprintf(stderr, "SSE: x0:%s x1:%s val0:0x%.16jx val1:0x%.16jx val2:0x%.16jx\n", $$($(x0)), $$($(x1)), ::uintmax_t(val0), ::uintmax_t(val1), ::uintmax_t(val2));
 
-	return val0 == val1;
+	return val0 == val1 && val0 == val2;
 }
 
 bool run_avx() {
