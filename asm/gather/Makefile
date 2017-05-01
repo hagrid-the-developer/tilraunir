@@ -21,7 +21,7 @@ clean:
 run_test: test
 	./test
 
-test: test.o run_movps.o run_gatherd.o
+test: run_movps.o run_gatherd.o test.o
 	$(LINK.o)
 
 %.o: %.cpp
@@ -31,4 +31,4 @@ test: test.o run_movps.o run_gatherd.o
 	$(COMP.c)
 
 %.o: %.S
-$(COMP.S)
+	$(COMP.S)

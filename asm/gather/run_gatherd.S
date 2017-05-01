@@ -6,7 +6,8 @@ run_gatherd:
 	# rsi -- len_div_32
 	# ymm0 -- steps
 	vcmpeqps %ymm10, %ymm10, %ymm10
-1:	vpgatherdps %ymm10, (%rdi, %ymm0, 4), %ymm1
+1:	vgatherdps %ymm10, (%rdi, %ymm0, 4), %ymm1
 	lea 0x4(%rdi), %rdi
 	dec %rsi
-	jne 1f
+	jne 1b
+	ret

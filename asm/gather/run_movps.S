@@ -7,4 +7,5 @@ run_movps:
 1:	vmovaps (%rdi), %ymm0
 	lea 0x20(%rdi), %rdi
 	dec %rsi
-	jne 1f
+	jne 1b
+	ret

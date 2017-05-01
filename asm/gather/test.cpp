@@ -1,3 +1,4 @@
+#include <cstdio>
 #include <cstdlib>
 
 #include "gettime.hpp"
@@ -13,7 +14,7 @@ void test() {
 	static const ::size_t TOTAL_LEN = LEN + 8*4096;
 
 	float *p = nullptr;
-	if (::posix_memalign(&p, 32, LEN*sizeof(float)+8*4096)) {
+	if (::posix_memalign(reinterpret_cast<void**>(&p), 32, TOTAL_LEN*sizeof(float))) {
 		fprintf(stderr, "Cannot allocate memory :-(");
 		::exit(1);
 	}
@@ -31,7 +32,7 @@ void test() {
 	AVX steps{ .dw_ = {0, len_div_8_32, 2*len_div_8_32, 3*len_div_8_32, 4*len_div_8_32, 5*len_div_8_32, 6*len_div_8_32, 7*len_div_8_32} };
 
 	const auto beg_gatherd = gettime();
-	run_gatherd(p, len_div_8_32, steps);
+	run_gatherd(p, len_div_8_32, steps.i8_);
 	const auto end_gatherd = gettime();
 	fprintf(stderr, "gatherd: %f\n", end_gatherd - beg_gatherd);
 
@@ -39,3 +40,10 @@ void test() {
 }
 
 } /* Anonymous Namespace */
+
+int
+main(void) {
+	test();
+
+	return 0;
+}
