@@ -15,7 +15,7 @@ const ::size_t MAX_LEN = 128*1024*1024;
 
 template <::size_t LEN = MAX_LEN, ::size_t STEP = MAX_LEN>
 void test_step() {
-	static_assert(LEN <= MAX_LEN);
+	static_assert(LEN <= MAX_LEN, "Exceeds maximum len :-(");
 
 	if (STEP > LEN)
 		return;
@@ -59,31 +59,31 @@ void test_step() {
 }
 
 template <::size_t LEN = MAX_LEN>
-void test_step() {
-	test_main<LEN, LEN>();
-	test_main<LEN, 1>();
-	test_main<LEN, 2>();
-	test_main<LEN, 4>();
-	test_main<LEN, 8>();
-	test_main<LEN, 16>();
-	test_main<LEN, 32>();
-	test_main<LEN, 64>();
-	test_main<LEN, 128>();
-	test_main<LEN, 256>();
-	test_main<LEN, 512>();
-	test_main<LEN, 1024>();
-	test_main<LEN, 2048>();
-	test_main<LEN, 4096>();
-	test_main<LEN, 10*1024>();
+void test() {
+	test_step<LEN, LEN>();
+	test_step<LEN, 1>();
+	test_step<LEN, 2>();
+	test_step<LEN, 4>();
+	test_step<LEN, 8>();
+	test_step<LEN, 16>();
+	test_step<LEN, 32>();
+	test_step<LEN, 64>();
+	test_step<LEN, 128>();
+	test_step<LEN, 256>();
+	test_step<LEN, 512>();
+	test_step<LEN, 1024>();
+	test_step<LEN, 2048>();
+	test_step<LEN, 4096>();
+	test_step<LEN, 10*1024>();
 }
 
 } /* Anonymous Namespace */
 
 int
 main(void) {
-	test_step<>();
-	test_step<4096>();
-	test_step<2*1024*1024>();
+	test<>();
+	test<4096>();
+	test<2*1024*1024>();
 
 	return 0;
 }
