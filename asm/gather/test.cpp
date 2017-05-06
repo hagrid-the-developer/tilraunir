@@ -21,10 +21,9 @@ void test_step() {
 		return;
 
 	const ::size_t len_div_32 = LEN/32;
-	const ::size_t len_div_8_32 = len_div_32 / 8;
-	const ::size_t step = STEP == MAX_LEN ? len_div_8_32 : STEP;
+	const ::size_t step = STEP == MAX_LEN ? len_div_32 : STEP;
 
-	if (8*step > len_div_32)
+	if (4*8*step > LEN)
 		return;
 
 	//static const ::size_t LEN = 128*1024*1024;
@@ -51,7 +50,7 @@ void test_step() {
 
 	const auto beg_gatherd = gettime();
 	for (::size_t i = repeat; i--; )
-		run_gatherd(p, len_div_8_32, steps.i8_);
+		run_gatherd(p, len_div_32, steps.i8_);
 	const auto end_gatherd = gettime();
 	fprintf(stderr, "\tgatherd: %lf\n", end_gatherd - beg_gatherd);
 
