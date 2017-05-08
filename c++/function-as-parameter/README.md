@@ -68,8 +68,8 @@ if function `g` with one argument of type **pointer to function without argument
 
     int f2(std::string x());
     
-is function `f2` that takes one argument `x` of type ** pointer to function without arguments returning `std::string` ** `f2` returns `int`.
+is function `f2` that takes one argument `x` of type **pointer to function without arguments returning `std::string`** `f2` returns `int`.
 
     int g2(std::string (*x)());
 
-is function `g2` that takes one argument `x` of type **  pointer to function without arguments returning `std::string` ** and `g2` returns `int`.
+is function `g2` that takes one argument `x` of type **pointer to function without arguments returning `std::string`** and `g2` returns `int`.
