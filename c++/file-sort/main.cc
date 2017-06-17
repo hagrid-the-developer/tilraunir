@@ -90,7 +90,6 @@ seastar::future<> partition_file_dma_fiber(const ::uint64_t file_beg, const ::ui
         auto range = boost::irange(file_beg, file_end, cfg.buf_size());
         return seastar::do_for_each(range, [&buf, &f](const ::uint64_t pos) {
             return f.dma_read(pos, buf.get_write(), cfg.buf_size()).then([&buf, pos] (const ::size_t size) {
-                std::cerr << "Read: " << size << std::endl;
                 if (!size) {
                     // FIXME: Return error
                     return seastar::make_ready_future<>();
@@ -163,17 +162,21 @@ private:
 
 
     Page& first_page(const ::size_t i) noexcept {
+        assert(i < len_);
         return *reinterpret_cast<Page*>(buf_.get_write() + i*cfg.buf_size());
     }
     const Page& first_page(const ::size_t i) const noexcept {
+        assert(i < len_);
         return *reinterpret_cast<const Page*>(buf_.get() + i*cfg.buf_size());
     }
 
     Page& page(const ::size_t i) noexcept {
-        return *reinterpret_cast<Page*>(buf_.get_write() + i*cfg.buf_size() + buf_positions_[i]*4096);
+        assert(i < len_);
+        return *reinterpret_cast<Page*>(buf_.get_write() + i*cfg.buf_size() + buf_positions_[i]);
     }
     const Page& page(const ::size_t i) const noexcept {
-        return *reinterpret_cast<const Page*>(buf_.get() + i*cfg.buf_size() + buf_positions_[i]*4096);
+        assert(i < len_);
+        return *reinterpret_cast<const Page*>(buf_.get() + i*cfg.buf_size() + buf_positions_[i]);
     }
 
     seastar::future<::uint64_t> total_input_files_length() {
@@ -285,7 +288,7 @@ public:
     ,   out_file_{}
     ,   positions_{len_, ::uint64_t(0)}
     ,   heap_{boost::counting_iterator<::size_t>(f_), boost::counting_iterator<::size_t>(l_)}
-    ,   buf_positions_{len_, ::size_t(0)}
+    ,   buf_positions_{len_, ~::size_t(0)}
     ,   buf_lens_{len_, ::size_t(0)}
     ,   buf_{seastar::temporary_buffer<char>::aligned(len_ * cfg.buf_size(), 4096)}
     ,   out_buf_{seastar::temporary_buffer<char>::aligned(cfg.buf_size(), 4096)}
@@ -296,6 +299,7 @@ public:
     MergeFilesByIdxDma(MergeFilesByIdxDma&&) = default;
     MergeFilesByIdxDma& operator=(const MergeFilesByIdxDma&) = delete;
     MergeFilesByIdxDma& operator=(MergeFilesByIdxDma&&) = default;
+    ~MergeFilesByIdxDma() = default;
 
     seastar::future<> operator()() {
         return prepare_files().then([this] {
@@ -339,16 +343,18 @@ seastar::future<> merge_file_dma(const ::uint64_t file_size) {
         files_to_merge = files_generated;
     }
 
-    return seastar::do_for_each(plan, [] (const auto layer) {
-        const auto f_idx = layer.front().f_;
-        const auto n_idx = layer.back().l_;
-        return seastar::parallel_for_each(layer, [f_idx, n_idx] (const auto indexes) {
-            auto range = boost::irange(indexes.f_, indexes.l_, cfg.merge_files_at_once_num());
-            return seastar::do_for_each(range, [f_idx, n_idx] (const auto idx) {
-                const auto last = std::min(idx + cfg.merge_files_at_once_num(), n_idx);
-                MergeFilesByIdxDma mfbi{idx, last, n_idx + (idx - f_idx)/ cfg.merge_files_at_once_num()};
-                return seastar::do_with(std::move(mfbi), [](auto &mfbi) {
-                    return mfbi();
+    return seastar::do_with(std::move(plan), [](const auto &plan) {
+        return seastar::do_for_each(plan, [] (const auto &layer) {
+            const auto f_idx = layer.front().f_;
+            const auto n_idx = layer.back().l_;
+            return seastar::parallel_for_each(layer, [f_idx, n_idx] (const auto indexes) {
+                auto range = boost::irange(indexes.f_, indexes.l_, cfg.merge_files_at_once_num());
+                return seastar::do_for_each(range, [f_idx, n_idx] (const auto idx) {
+                    const auto last = std::min(idx + cfg.merge_files_at_once_num(), n_idx);
+                    MergeFilesByIdxDma mfbi{idx, last, n_idx + (idx - f_idx)/ cfg.merge_files_at_once_num()};
+                    return seastar::do_with(std::move(mfbi), [](auto &mfbi) {
+                        return mfbi();
+                    });
                 });
             });
         });
