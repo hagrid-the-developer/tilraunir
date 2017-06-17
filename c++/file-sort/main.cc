@@ -10,13 +10,6 @@
 namespace
 {
 
-// Questions:
-//   * How to allocate memory? Through new/delete, malloc/free?
-//     Can I use std::vector etc. without special allocator?
-//   * How can I share file between threads/fibers?
-//   * Is it possible to use some sorter name for namespace seastar? :-)
-
-
 template <typename T>
 T round_to(const T val, const T round) noexcept {
     return (val + round - 1) / round;
@@ -131,7 +124,6 @@ seastar::future<> partition_file_dma(const ::uint64_t file_size) {
             return seastar::parallel_for_each(positions, [file](const auto part) {
                 std::cerr << "part.beg:" << part.beg_ << "; " << part.end_ << std::endl;
                 return partition_file_dma_fiber(part.beg_, part.end_, file);
-                //return seastar::make_ready_future<>();
             });
         });
     });
@@ -172,10 +164,16 @@ private:
 
     Page& page(const ::size_t i) noexcept {
         assert(i < len_);
+        assert(buf_positions_[i] < cfg.buf_size());
+        assert(buf_positions_[i] < buf_lens_[i]);
+        assert(buf_positions_[i] % 4096 == 0);
         return *reinterpret_cast<Page*>(buf_.get_write() + i*cfg.buf_size() + buf_positions_[i]);
     }
     const Page& page(const ::size_t i) const noexcept {
         assert(i < len_);
+        assert(buf_positions_[i] < cfg.buf_size());
+        assert(buf_positions_[i] < buf_lens_[i]);
+        assert(buf_positions_[i] % 4096 == 0);
         return *reinterpret_cast<const Page*>(buf_.get() + i*cfg.buf_size() + buf_positions_[i]);
     }
 
@@ -195,7 +193,10 @@ private:
             return seastar::open_file_dma(cfg.tmp_file(gen_), seastar::open_flags::wo | seastar::open_flags::create | seastar::open_flags::truncate).then([this] (seastar::file out_file) {
                 out_file_ = std::move(out_file);
                 return total_input_files_length().then([this](const ::uint64_t len) {
-                    return out_file_.allocate(0, len);
+                    return out_file_.allocate(0, len).then_wrapped([this] (auto fut) {
+                        if (fut.failed())
+                            fprintf(stderr, "Cannot allocate space in file\n");
+                    });
                 });
             });
         });
@@ -204,10 +205,17 @@ private:
     seastar::future<> ensure_can_write() {
         if (out_buf_pos_ < out_buf_.size()) {
             assert(out_buf_pos_ + 4096 <= out_buf_.size());
+            assert(out_buf_pos_ % 4096 == 0);
             return seastar::make_ready_future<>();
         }
-        return out_file_.dma_write(out_file_pos_, out_buf_.get_write(), out_buf_.size()).then([this] (const ::size_t size) {
+        return out_file_.dma_write(out_file_pos_, out_buf_.get_write(), out_buf_.size()).then_wrapped([this] (auto fut) {
             // FIXME: Deal with size < out_buf.size()
+            if (fut.failed()) {
+                fprintf(stderr, "Cannot write to file: %zu\n", gen_);
+                return fut.discard_result();
+            }
+
+            const ::size_t size = std::get<0>(fut.get());
             out_file_pos_ += size;
             out_buf_pos_ = 0;
             return seastar::make_ready_future<>();
@@ -215,15 +223,24 @@ private:
     }
 
     seastar::future<> ensure_can_read(const ::size_t i) {
-        if (buf_positions_[i] < cfg.buf_size()) {
+        if (buf_positions_[i] < buf_lens_[i]) {
             assert(buf_positions_[i] + 4096 <= cfg.buf_size());
             return seastar::make_ready_future<>();
         }
-        return files_[i].dma_read(positions_[i], &first_page(i), cfg.buf_size()).then([this, i] (const ::size_t size) {
-            // FIXME: File cannot be read!
+        assert(positions_[i] % 4096 == 0);
+        assert(reinterpret_cast<::uintptr_t>(&first_page(i)) % 4096 == 0);
+        assert(cfg.buf_size() % 4096 == 0);
+        return files_[i].dma_read(positions_[i], &first_page(i), cfg.buf_size()).then_wrapped([this, i] (auto fut) {
+            if (fut.failed()) {
+                fprintf(stderr, "Cannot read from file: %zu\n", f_ + i);
+                return fut.discard_result();
+            }
+
+            const ::size_t size = std::get<0>(fut.get());
             buf_positions_[i] = 0;
             buf_lens_[i]= size;
             positions_[i] += size;
+            return seastar::make_ready_future<>();
         });
     }
 
@@ -237,7 +254,7 @@ private:
             out_buf_pos_ += 4096;
 
             return ensure_can_read(i).then([this, i] {
-                if (buf_positions_[i] >= cfg.buf_size())
+                if (buf_positions_[i] >= buf_lens_[i])
                     heap_.resize(heap_.size() - 1);
                 else
                     std::push_heap(heap_.begin(), heap_.end(), CmpForHeap(*this));
@@ -263,7 +280,7 @@ private:
     }
 
     /**
-     * Operator for heap_xyz() functions.
+     * Comparision functor for heap_xyz() functions.
      */
     struct CmpForHeap {
         MergeFilesByIdxDma &parent_;
@@ -279,21 +296,21 @@ private:
 
 public:
     MergeFilesByIdxDma(const ::size_t f, const ::size_t l, const ::size_t gen)
-    :   f_{f}
-    ,   l_{l}
-    ,   gen_{gen}
-    ,   len_{l_ - f_}
-    ,   range_{boost::irange(::size_t(0), len_)}
-    ,   files_{}
-    ,   out_file_{}
-    ,   positions_{len_, ::uint64_t(0)}
-    ,   heap_{boost::counting_iterator<::size_t>(f_), boost::counting_iterator<::size_t>(l_)}
-    ,   buf_positions_{len_, ~::size_t(0)}
-    ,   buf_lens_{len_, ::size_t(0)}
-    ,   buf_{seastar::temporary_buffer<char>::aligned(len_ * cfg.buf_size(), 4096)}
-    ,   out_buf_{seastar::temporary_buffer<char>::aligned(cfg.buf_size(), 4096)}
-    ,   out_buf_pos_{::size_t(0)}
-    ,   out_file_pos_{::size_t(0)} {
+    :   f_(f)
+    ,   l_(l)
+    ,   gen_(gen)
+    ,   len_(l_ - f_)
+    ,   range_(boost::irange(::size_t(0), len_))
+    ,   files_()
+    ,   out_file_()
+    ,   positions_(len_, ::uint64_t(0))
+    ,   heap_(range_.begin(), range_.end())
+    ,   buf_positions_(len_, ::size_t(0))
+    ,   buf_lens_(len_, ::size_t(0))
+    ,   buf_(seastar::temporary_buffer<char>::aligned(len_ * cfg.buf_size(), 4096))
+    ,   out_buf_(seastar::temporary_buffer<char>::aligned(cfg.buf_size(), 4096))
+    ,   out_buf_pos_(::size_t(0))
+    ,   out_file_pos_(::size_t(0)) {
     }
     MergeFilesByIdxDma(const MergeFilesByIdxDma&) = delete;
     MergeFilesByIdxDma(MergeFilesByIdxDma&&) = default;
@@ -303,13 +320,13 @@ public:
 
     seastar::future<> operator()() {
         return prepare_files().then([this] {
-            create_heap().then([this] {
-                seastar::do_until([this] {
+            return create_heap().then([this] {
+                return seastar::do_until([this] {
                     return heap_.size() == 0;
                 }, [this] {
                     return step();
                 }).then([this] {
-                    mrproper();
+                    return mrproper();
                 });
             });
         });
