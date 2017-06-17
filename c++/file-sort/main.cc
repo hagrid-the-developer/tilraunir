@@ -20,6 +20,48 @@ T align_to(const T val, const T alignment) noexcept {
     return (val + alignment - 1) / alignment * alignment;
 }
 
+std::string
+str_printf(const char *msg, va_list args) noexcept
+{
+        va_list args2;
+
+        va_copy(args2, args);
+        const int len = ::vsnprintf(nullptr, 0, msg, args2);
+        va_end(args2);
+
+        std::string ret(len + 1, '~');
+        ::vsnprintf(&ret[0], len + 1, msg, args);
+        assert(ret.back() == 0);
+        ret.resize(len);
+
+        return ret;
+}
+
+/**
+ * Exception with printf-like constructor.
+ * This isn't 100% correct implementation, since it stores std::string
+ *   as its member and its't copy constructor can throw an exception.
+ */
+class Error : public std::exception {
+private:
+        std::string s_;
+
+public:
+        Error() = default;
+        Error(const Error&) = default;
+        Error(Error&&) = default;
+        Error(const std::string &s) noexcept
+        :       s_(s) {
+        }
+        Error(const char *msg, ...) noexcept {
+                va_list args;
+
+                va_start(args, msg);
+                s_ = str_printf(msg, args);
+                va_end(args);
+        }
+};
+
 struct Page {
     char data_[4096];
 
@@ -194,8 +236,13 @@ private:
                 out_file_ = std::move(out_file);
                 return total_input_files_length().then([this](const ::uint64_t len) {
                     return out_file_.allocate(0, len).then_wrapped([this] (auto fut) {
-                        if (fut.failed())
-                            fprintf(stderr, "Cannot allocate space in file\n");
+                        try {
+                            fut.get();
+                        } catch (Error &e) {
+                            throw;
+                        } catch (std::exception &e) {
+                            throw Error("Cannot allocate space for file: %s: %s", cfg.tmp_file(gen_).c_str(), e.what());
+                        }
                     });
                 });
             });
@@ -209,16 +256,16 @@ private:
             return seastar::make_ready_future<>();
         }
         return out_file_.dma_write(out_file_pos_, out_buf_.get_write(), out_buf_.size()).then_wrapped([this] (auto fut) {
-            // FIXME: Deal with size < out_buf.size()
-            if (fut.failed()) {
-                fprintf(stderr, "Cannot write to file: %zu\n", gen_);
-                return fut.discard_result();
+            try {
+                const ::size_t size = std::get<0>(fut.get());
+                out_file_pos_ += size;
+                out_buf_pos_ = 0;
+                return seastar::make_ready_future<>();
+            } catch (Error &e) {
+                throw;
+            } catch (std::exception &e) {
+                throw Error("Cannot write to file: %s: %s", cfg.tmp_file(gen_).c_str(), e.what());
             }
-
-            const ::size_t size = std::get<0>(fut.get());
-            out_file_pos_ += size;
-            out_buf_pos_ = 0;
-            return seastar::make_ready_future<>();
         });
     }
 
@@ -231,16 +278,17 @@ private:
         assert(reinterpret_cast<::uintptr_t>(&first_page(i)) % 4096 == 0);
         assert(cfg.buf_size() % 4096 == 0);
         return files_[i].dma_read(positions_[i], &first_page(i), cfg.buf_size()).then_wrapped([this, i] (auto fut) {
-            if (fut.failed()) {
-                fprintf(stderr, "Cannot read from file: %zu\n", f_ + i);
-                return fut.discard_result();
+            try {
+                const ::size_t size = std::get<0>(fut.get());
+                buf_positions_[i] = 0;
+                buf_lens_[i]= size;
+                positions_[i] += size;
+                return seastar::make_ready_future<>();
+            } catch (Error &e) {
+                throw;
+            } catch (std::exception &e) {
+                throw Error("Cannot read from file: %s: %s", cfg.tmp_file(i + f_).c_str(), e.what());
             }
-
-            const ::size_t size = std::get<0>(fut.get());
-            buf_positions_[i] = 0;
-            buf_lens_[i]= size;
-            positions_[i] += size;
-            return seastar::make_ready_future<>();
         });
     }
 
