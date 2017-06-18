@@ -21,8 +21,7 @@ T align_to(const T val, const T alignment) noexcept {
 }
 
 std::string
-str_printf(const char *msg, va_list args) noexcept
-{
+str_printf(const char *msg, va_list args) {
         va_list args2;
 
         va_copy(args2, args);
@@ -37,28 +36,27 @@ str_printf(const char *msg, va_list args) noexcept
         return ret;
 }
 
+std::string
+str_printf(const char *msg, ...) {
+	va_list args;
+
+	va_start(args, msg);
+	std::string ret = str_printf(msg, args);
+	va_end(args);
+	return ret;
+}
+
 /**
  * Exception with printf-like constructor.
- * This isn't 100% correct implementation, since it stores std::string
- *   as its member and its't copy constructor can throw an exception.
  */
-class Error : public std::exception {
-private:
-        std::string s_;
-
+class Error : public std::runtime_error {
 public:
         Error() = default;
         Error(const Error&) = default;
         Error(Error&&) = default;
-        Error(const std::string &s) noexcept
-        :       s_(s) {
-        }
-        Error(const char *msg, ...) noexcept {
-                va_list args;
-
-                va_start(args, msg);
-                s_ = str_printf(msg, args);
-                va_end(args);
+        template<typename... T>
+        Error(T... t)
+        :   std::runtime_error(str_printf(t...)) {
         }
 };
 
@@ -126,19 +124,18 @@ seastar::future<> partition_file_dma_fiber(const ::uint64_t file_beg, const ::ui
         return seastar::do_for_each(range, [&buf, &f](const ::uint64_t pos) {
             return f.dma_read(pos, buf.get_write(), cfg.buf_size()).then([&buf, pos] (const ::size_t size) {
                 if (!size) {
-                    // FIXME: Return error
                     return seastar::make_ready_future<>();
                 }
                 auto ptr = reinterpret_cast<Page*>(buf.get_write());
 
-                // FIXME: Deal with: size % 4096 != 0.
+                assert(size % 4096 == 0);
                 std::sort(ptr, ptr + size/4096);
                 const ::uint64_t index = pos / cfg.buf_size();
                 return seastar::open_file_dma(cfg.tmp_file(index), seastar::open_flags::wo | seastar::open_flags::create | seastar::open_flags::truncate).then([&buf, size] (seastar::file outfile) {
                     return seastar::do_with(std::move(outfile), [&buf, size](auto &outfile) {
                         return outfile.allocate(0, size).then([&outfile, &buf, size] {
                             return outfile.dma_write(0, buf.get(), size).then([size] (const ::size_t written_size) {
-                              // FIXME: Deal with case when written_size < size => I/O error.
+                                throw Error("Cannot write whole buffer");
                             });
                         });
                     });
@@ -161,8 +158,13 @@ seastar::future<> partition_file_dma(const ::uint64_t file_size) {
     }
 
     return seastar::do_with(std::move(positions), [](const auto &positions) {
-        return seastar::open_file_dma(cfg.file_path(), seastar::open_flags::ro).then([&positions](seastar::file file) {
-            // FIXME: Deal with file that cannot be opened.
+        return seastar::open_file_dma(cfg.file_path(), seastar::open_flags::ro).then_wrapped([&positions](auto fut) {
+            seastar::file file;
+            try {
+                file = std::get<0>(fut.get());
+            } catch (std::exception &e) {
+                throw Error("Cannot open file: %s : %s", cfg.file_path().c_str(), e.what());
+            }
             return seastar::parallel_for_each(positions, [file](const auto part) {
                 std::cerr << "part.beg:" << part.beg_ << "; " << part.end_ << std::endl;
                 return partition_file_dma_fiber(part.beg_, part.end_, file);
@@ -227,8 +229,13 @@ private:
 
     seastar::future<> prepare_files() {
         return seastar::do_for_each(range_, [this](const ::size_t i) {
-            return seastar::open_file_dma(cfg.tmp_file(i + f_), seastar::open_flags::ro).then([this](seastar::file file) {
-                // FIXME: File cannot be opened!
+            return seastar::open_file_dma(cfg.tmp_file(i + f_), seastar::open_flags::ro).then_wrapped([this, i](auto fut) {
+                seastar::file file;
+                try {
+                    file = std::get<0>(fut.get());
+                } catch (std::exception &e) {
+                    throw Error("Cannot open file: %s : %s", cfg.tmp_file(i).c_str(), e.what());
+                }
                 files_.emplace_back(std::move(file));
             });
         }).then([this] {
@@ -427,7 +434,13 @@ seastar::future<> merge_file_dma(const ::uint64_t file_size) {
 }
 
 seastar::future<> sort_file() {
-    return seastar::file_size(cfg.file_path()).then([](const ::uint64_t file_size) {
+    return seastar::file_size(cfg.file_path()).then_wrapped([](auto fut) {
+        try {
+            return std::get<0>(fut.get());
+        } catch (std::exception &e) {
+            throw Error("Cannot determine size of file: %s : %s", cfg.file_path().c_str(), e.what());
+        }
+    }).then([](const ::uint64_t file_size) {
         return partition_file_dma(file_size).then([file_size] {
             return merge_file_dma(file_size);
         });
