@@ -135,7 +135,8 @@ seastar::future<> partition_file_dma_fiber(const ::uint64_t file_beg, const ::ui
                     return seastar::do_with(std::move(outfile), [&buf, size](auto &outfile) {
                         return outfile.allocate(0, size).then([&outfile, &buf, size] {
                             return outfile.dma_write(0, buf.get(), size).then([size] (const ::size_t written_size) {
-                                throw Error("Cannot write whole buffer");
+                                if (written_size < size)
+                                    throw Error("Cannot write whole buffer");
                             });
                         });
                     });
@@ -265,6 +266,9 @@ private:
         return out_file_.dma_write(out_file_pos_, out_buf_.get_write(), out_buf_.size()).then_wrapped([this] (auto fut) {
             try {
                 const ::size_t size = std::get<0>(fut.get());
+                if (size < out_buf_.size()) {
+                    throw Error("Cannot write all data to file: %s", cfg.tmp_file(gen_).c_str());
+                }
                 out_file_pos_ += size;
                 out_buf_pos_ = 0;
                 return seastar::make_ready_future<>();
@@ -330,7 +334,26 @@ private:
 
     seastar::future<> mrproper() {
         return seastar::do_for_each(range_, [this](const ::size_t i) {
-            return seastar::remove_file(cfg.tmp_file(i + f_));
+            return seastar::remove_file(cfg.tmp_file(i + f_)).then_wrapped([this, i] (auto fut) {
+                try {
+                    fut.get();
+                } catch (std::exception &e) {
+                    throw Error("Cannot remove file: %s : %s", cfg.tmp_file(i + f_).c_str(), e.what());
+                }
+            });
+        }).then([this] {
+            return out_file_.dma_write(out_file_pos_, out_buf_.get_write(), out_buf_pos_).then_wrapped([this] (auto fut) {
+                try {
+                    const ::size_t size = std::get<0>(fut.get());
+                    if (size < out_buf_pos_) {
+                        throw Error("Cannot wrote all data to file: %s", cfg.tmp_file(gen_).c_str());
+                    }
+                } catch (Error &e) {
+                    throw;
+                } catch (std::exception &e) {
+                    throw Error("Cannot write to file: %s: %s", cfg.tmp_file(gen_).c_str(), e.what());
+                }
+            });
         });
     }
 
