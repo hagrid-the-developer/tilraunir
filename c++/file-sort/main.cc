@@ -1,11 +1,14 @@
 #include "core/app-template.hh"
 #include "core/reactor.hh"
+#include <boost/filesystem.hpp>
 #include <boost/range.hpp>
-#include <boost/iterator/counting_iterator.hpp>
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>
 #include <iostream>
+
+namespace fs = boost::filesystem;
+namespace po = boost::program_options;
 
 namespace
 {
@@ -79,8 +82,12 @@ struct Page {
 class FileSortConfig {
 private:
     seastar::sstring file_path_ = "input.bin";
+    seastar::sstring out_file_path_ = "output.bin";
     seastar::sstring tmp_path_ = "./tmp";
-    ::size_t buf_size_in_pages_ = 1024;
+    ::size_t buf_size_ = 4;
+    ::size_t partition_fibers_num_ = 12;
+    ::size_t merge_files_at_once_num_ = 4;
+    ::size_t merge_fibers_num_ = 12;
 
 public:
     FileSortConfig() {
@@ -93,8 +100,12 @@ public:
         return file_path_;
     }
 
+    const seastar::sstring &out_file_path() const noexcept {
+        return out_file_path_;
+    }
+
     ::size_t buf_size() const noexcept {
-        return buf_size_in_pages_ << 12;
+        return buf_size_ * 1024 * 1024;
     }
 
     seastar::sstring tmp_file(const ::size_t index) const noexcept {
@@ -105,15 +116,28 @@ public:
     }
 
     ::size_t partition_fibers_num() const noexcept {
-        return 12;
+        return partition_fibers_num_;
     }
 
     ::size_t merge_fibers_num() const noexcept {
-        return 12;
+        return merge_fibers_num_;
     }
 
     ::size_t merge_files_at_once_num() const noexcept {
-        return 4;
+        return merge_files_at_once_num_;
+    }
+
+    template <typename Opt>
+    void add_options(Opt &opt) {
+        opt.add_options()
+        ("in-file" , po::value(&file_path_)->default_value(file_path_), "path to input file")
+        ("out-file" , po::value(&out_file_path_)->default_value(out_file_path_), "path to output file")
+        ("tmp-dir", po::value(&tmp_path_)->default_value(tmp_path_), "path to temporary directory")
+        ("buf-size", po::value(&buf_size_)->default_value(buf_size_), "size of buffer for one fiber (MB)")
+        ("partition-fibers-num", po::value(&partition_fibers_num_)->default_value(partition_fibers_num_), "number of fibers for partitioning stage")
+        ("merge-fibers-num", po::value(&merge_fibers_num_)->default_value(merge_fibers_num_), "number of fibers for merging stage")
+        ("merge-files-at-once", po::value(&merge_files_at_once_num_)->default_value(merge_files_at_once_num_), "how many files can be merged in one fiber at once")
+        ;
     }
 };
 FileSortConfig cfg;
@@ -167,7 +191,6 @@ seastar::future<> partition_file_dma(const ::uint64_t file_size) {
                 throw Error("Cannot open file: %s : %s", cfg.file_path().c_str(), e.what());
             }
             return seastar::parallel_for_each(positions, [file](const auto part) {
-                std::cerr << "part.beg:" << part.beg_ << "; " << part.end_ << std::endl;
                 return partition_file_dma_fiber(part.beg_, part.end_, file);
             });
         });
@@ -267,7 +290,7 @@ private:
             try {
                 const ::size_t size = std::get<0>(fut.get());
                 if (size < out_buf_.size()) {
-                    throw Error("Cannot write all data to file: %s", cfg.tmp_file(gen_).c_str());
+                    throw Error("Cannot wrote all data to file: %s", cfg.tmp_file(gen_).c_str());
                 }
                 out_file_pos_ += size;
                 out_buf_pos_ = 0;
@@ -346,7 +369,7 @@ private:
                 try {
                     const ::size_t size = std::get<0>(fut.get());
                     if (size < out_buf_pos_) {
-                        throw Error("Cannot wrote all data to file: %s", cfg.tmp_file(gen_).c_str());
+                        throw Error("Cannot write all data to file: %s", cfg.tmp_file(gen_).c_str());
                     }
                 } catch (Error &e) {
                     throw;
@@ -452,6 +475,23 @@ seastar::future<> merge_file_dma(const ::uint64_t file_size) {
                     });
                 });
             });
+        }).then([&plan] {
+            // Move file to final destination .
+            const auto old_file = cfg.tmp_file(plan.back().back().l_);
+            const auto new_file = cfg.out_file_path();
+            const auto old_dir = fs::path(old_file).parent_path().string();
+            const auto new_dir = fs::path(new_file).parent_path().string();
+            return seastar::rename_file(old_file, new_file).then([old_dir] {
+                return seastar::sync_directory(old_dir);
+            }).then([new_dir] {
+                return seastar::sync_directory(new_dir);
+            }).then_wrapped([] (auto fut) {
+                try {
+                    fut.get();
+                } catch (std::exception &e) {
+                    throw Error("Cannot move result to a file: %s : %s", cfg.out_file_path().c_str(), e.what());
+                }
+            });
         });
     });
 }
@@ -474,9 +514,10 @@ seastar::future<> sort_file() {
 
 int main(int argc, char** argv) {
     seastar::app_template app;
+    cfg.add_options(app);
+
     try {
         app.run(argc, argv, [] {
-                std::cout << seastar::smp::count << "\n";
                 return sort_file();
         });
     } catch(...) {
