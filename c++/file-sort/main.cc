@@ -290,7 +290,7 @@ private:
             try {
                 const ::size_t size = std::get<0>(fut.get());
                 if (size < out_buf_.size()) {
-                    throw Error("Cannot wrote all data to file: %s", cfg.tmp_file(gen_).c_str());
+                    throw Error("Cannot write all data to file: %s", cfg.tmp_file(gen_).c_str());
                 }
                 out_file_pos_ += size;
                 out_buf_pos_ = 0;
