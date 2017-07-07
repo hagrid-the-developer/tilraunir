@@ -3,5 +3,5 @@
 	.align 16
 ymm_set_xmm:
 	vpcmpeqd %ymm0, %ymm0, %ymm0
-	vxorps %xmm0, %xmm0, %xmm0
+	vpcmpeqd %xmm0, %xmm0, %xmm0
 	ret

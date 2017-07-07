@@ -4,7 +4,7 @@
  * as -o ymm_set_xmm.o ymm_set_xmm.S
  * g++ -o test test.o ymm_set_xmm.o
  * ./test
- * 0, 0, 0, 0, 0, 0, 0, 0
+ * 4294967295, 4294967295, 4294967295, 4294967295, 0, 0, 0, 0
  */
 
 #include <cstdio>
