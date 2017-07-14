@@ -1,3 +1,20 @@
+/*
+ * $ g++ -std=gnu++1y -o operator-for-monad operator-for-monad.cpp
+ * $ ./operator-for-monad
+ *
+ * Operator >>=
+ * X:3 >>= X:4
+ * X:2 >>= X:(3 + 4)
+ * X:1 >>= X:(2 + (3 + 4))
+ * X:0 >>= X:(1 + (2 + (3 + 4)))
+ * Operator >>
+ * X:0 >> X:1
+ * X:(0 + 1) >> X:2
+ * X:((0 + 1) + 2) >> X:3
+ * X:(((0 + 1) + 2) + 3) >> X:4
+ *
+ */
+
 #include <cstdio>
 #include <string>
 
