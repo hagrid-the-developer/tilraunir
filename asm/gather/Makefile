@@ -12,8 +12,10 @@ COMP.cpp = $(CXX) $(CFLAGS:-std%=) $(CXXFLAGS) -o $@ -c $<
 COMP.S = $(AS) -o $@ $<
 LINK.o = $(CXX) -o $@ $^
 
+.PHONY: all
 all: run_test
 
+.PHONY: clean
 clean:
 	rm -vf *.o test
 
