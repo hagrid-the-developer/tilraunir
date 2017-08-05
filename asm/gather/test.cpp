@@ -16,14 +16,14 @@ const ::size_t MAX_LEN = 128*1024*1024;
 AVX step_sum(const float *p, const ::size_t len, const AVX steps) {
 	AVX sum;
 	for (::size_t i = 0; i < len; ++i) {
-		sum.f8_[0] += p[i + 0*steps.i8_[0]];
-		sum.f8_[1] += p[i + 1*steps.i8_[1]];
-		sum.f8_[2] += p[i + 2*steps.i8_[2]];
-		sum.f8_[3] += p[i + 3*steps.i8_[3]];
-		sum.f8_[4] += p[i + 4*steps.i8_[4]];
-		sum.f8_[5] += p[i + 5*steps.i8_[5]];
-		sum.f8_[6] += p[i + 6*steps.i8_[6]];
-		sum.f8_[7] += p[i + 7*steps.i8_[7]];
+		sum.f8_[0] += p[i + steps.dw_[0]];
+		sum.f8_[1] += p[i + steps.dw_[1]];
+		sum.f8_[2] += p[i + steps.dw_[2]];
+		sum.f8_[3] += p[i + steps.dw_[3]];
+		sum.f8_[4] += p[i + steps.dw_[4]];
+		sum.f8_[5] += p[i + steps.dw_[5]];
+		sum.f8_[6] += p[i + steps.dw_[6]];
+		sum.f8_[7] += p[i + steps.dw_[7]];
 	}
 	return sum;
 }
@@ -62,7 +62,7 @@ void test_step() {
 	const auto end_mov = gettime();
 	fprintf(stderr, "\tmovs: %lf\n", end_mov - beg_mov);
 
-	AVX steps{ 0*::uint32_t(step), ::uint32_t(step), 2*::uint32_t(step), 3*::uint32_t(step), 4*::uint32_t(step), 5*::uint32_t(step), 6*::uint32_t(step), 7*::uint32_t(step) };
+	AVX steps{ 0*::uint32_t(step), 1*::uint32_t(step), 2*::uint32_t(step), 3*::uint32_t(step), 4*::uint32_t(step), 5*::uint32_t(step), 6*::uint32_t(step), 7*::uint32_t(step) };
 
 	const auto beg_gatherd = gettime();
 	for (::size_t i = repeat; i--; )

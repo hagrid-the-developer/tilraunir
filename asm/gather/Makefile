@@ -1,7 +1,7 @@
 CC = gcc
 CXX = g++
 AS = as
-CFLAGS += -std=gnu11 -Ofast -march=native -mavx -mavx2
+CFLAGS += -std=gnu11 -march=native -mavx -mavx2 -Ofast #-O0 -ggdb
 
 CXXFLAGS += -std=gnu++1y
 ASFLAGS += -march=avx2
