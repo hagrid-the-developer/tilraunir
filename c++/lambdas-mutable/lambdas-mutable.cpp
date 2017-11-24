@@ -5,6 +5,9 @@
  * When `mutable' is added then `()' must be added as well.
  *
  * Values do change between calls.
+ *
+ * Nice info related to this:
+ *   https://stackoverflow.com/questions/5501959/why-does-c0xs-lambda-require-mutable-keyword-for-capture-by-value-by-defau
  */
 
 
