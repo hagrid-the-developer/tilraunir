@@ -22,6 +22,7 @@ main(void) {
 
 	lmbd_val();
 	lmbd_val();
+	fprintf(stderr, "Original n: %d\n", n);
 
 	return 0;
 }
