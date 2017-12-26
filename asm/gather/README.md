@@ -3,7 +3,7 @@ Comparision of gatherd and movps
 
 Test fails when optimizations are enabled, probably due to different floating-point arithmetic. With `-O0` it passes.
 
-It seems that gatherd under Intel isn't so slow, under Ryzen, it is much, much worse:
+It seems that gatherd is slow on both Intel and AMD:
 
 
 Results for i7-4790S, GCC 7.1.0 under Ubuntu 14.04.5:
