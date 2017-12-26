@@ -1,7 +1,7 @@
 Comparision of gatherd and movps
 =============
 
-Test fails when optimizations are enabled, probably due to different floating-point arithmetic. With `-O0` they pass.
+Test fails when optimizations are enabled, probably due to different floating-point arithmetic. With `-O0` it passes.
 
 It seems that gatherd under Intel isn't so slow, under Ryzen, it is much, much worse:
 
