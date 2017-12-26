@@ -1,9 +1,9 @@
 CC = gcc
 CXX = g++
 AS = as
-CFLAGS += -std=gnu11 -march=native -mavx -mavx2 -Ofast #-O0 -ggdb
+CFLAGS += -std=gnu11 -march=native -mavx -mavx2 -Ofast# -O0 -ggdb -DDEBUG #-Ofast
 
-CXXFLAGS += -std=gnu++1y
+CXXFLAGS += -std=gnu++14
 ASFLAGS += -march=avx2
 
 

@@ -1,13 +1,12 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
+#include <cmath>
 #include <limits>
 
 #include "gettime.hpp"
 
-extern "C" {
 #include "gather.h"
-}
 
 namespace {
 
@@ -62,28 +61,28 @@ void test_step() {
 	const auto end_mov = gettime();
 	fprintf(stderr, "\tmovs: %lf\n", end_mov - beg_mov);
 
-	AVX steps{ 0*::uint32_t(step), 1*::uint32_t(step), 2*::uint32_t(step), 3*::uint32_t(step), 4*::uint32_t(step), 5*::uint32_t(step), 6*::uint32_t(step), 7*::uint32_t(step) };
+	AVX steps{{ 0*::uint32_t(step), 1*::uint32_t(step), 2*::uint32_t(step), 3*::uint32_t(step), 4*::uint32_t(step), 5*::uint32_t(step), 6*::uint32_t(step), 7*::uint32_t(step) }};
 
 	const auto beg_gatherd = gettime();
 	for (::size_t i = repeat; i--; )
 		::run_gatherd(p, len_div_32, steps.i8_);
 	const auto end_gatherd = gettime();
 	fprintf(stderr, "\tgatherd: %lf\n", end_gatherd - beg_gatherd);
-
+#ifdef DEBUG
 	// Testing that gatherd works correctly.
-	for (::size_t i = repeat; i--; ) {
+	for (::size_t _ = repeat; _--; ) {
 		const AVX sum_real{ ::run_gatherd_sum(p, len_div_32, steps.i8_) };
 		const AVX sum_expected = step_sum(p, len_div_32, steps);
-		for (unsigned i = 0; i < 8; ++i) {
-			if (sum_real.f8_[i] != sum_expected.f8_[i]) {
-				fprintf(stderr, "repeat:%zu, real and expected sums differs: (%f, %f, %f, %f, %f, %f, %f, %f) != (%f, %f, %f, %f, %f, %f, %f, %f)\n", repeat,
+		for (::size_t i = 0; i < 8; ++i) {
+			if (fabs(sum_real.f8_[i] - sum_expected.f8_[i])/std::max(fabs(sum_real.f8_[i]), fabs(sum_expected.f8_[i])) > 0.001) {
+				fprintf(stderr, "repeat:%zu/%zu, real and expected sums differs: (%f, %f, %f, %f, %f, %f, %f, %f) != (%f, %f, %f, %f, %f, %f, %f, %f)\n", i, repeat,
 						sum_real.f8_[0], sum_real.f8_[1], sum_real.f8_[2], sum_real.f8_[3], sum_real.f8_[4], sum_real.f8_[5], sum_real.f8_[6], sum_real.f8_[7],
 						sum_expected.f8_[0], sum_expected.f8_[1], sum_expected.f8_[2], sum_expected.f8_[3], sum_expected.f8_[4], sum_expected.f8_[5], sum_expected.f8_[6], sum_expected.f8_[7]);
 				::abort();
 			}
 		}
 	}
-
+#endif
 	::free(p);
 }
 
