@@ -1,7 +1,7 @@
 Experiments with Parallel STL and AVX support
 =============================================
 
-Several STL algorithms with and without `std::execution::unseq` were tested.
+Several STL algorithms with and without `std::execution::unseq` were tested. Results (see `algs*.S`):
 
 * SIMD istructions were used especially for simpler algorithms.
 * Similar code is generated regardless `-qopenmp-simd` is used.
