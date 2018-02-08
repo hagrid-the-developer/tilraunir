@@ -76,11 +76,6 @@ static auto convex_hull(Container points) {
 	if (len < 3)
 		return len;
 
-	std::sort(std::begin(points), std::end(points));
-	for (auto point: points) {
-		std::cerr << point << std::endl;
-	}
-
 	std::vector<Point> lower;
 	std::vector<Point> upper;
 
@@ -90,19 +85,11 @@ static auto convex_hull(Container points) {
 		}
 		lower.emplace_back(x);
 	}
-	std::cerr << std::endl << "Lower: " << std::endl;
-	for (auto point: lower) {
-		std::cerr << point << std::endl;
-	}
 
 	for (const auto& x: reverse(points)) {
 		while ((len = upper.size()) >= 2 && cross_product(upper[len - 2], upper[len - 1], x) <= 0)
 			upper.pop_back();
 		upper.emplace_back(x);
-	}
-	std::cerr << std::endl << "Upper: " << std::endl;
-	for (auto point: upper) {
-		std::cerr << point << std::endl;
 	}
 
 	assert(upper.size() + lower.size() > 4);
