@@ -76,6 +76,8 @@ static auto convex_hull(Container points) {
 	if (len < 3)
 		return len;
 
+	std::sort(std::begin(points), std::end(points));
+
 	std::vector<Point> lower;
 	std::vector<Point> upper;
 
