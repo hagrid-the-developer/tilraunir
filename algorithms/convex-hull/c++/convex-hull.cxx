@@ -82,9 +82,8 @@ static auto convex_hull(Container points) {
 	std::vector<Point> upper;
 
 	for (const auto& x: points) {
-		while ((len = lower.size()) >= 2 && cross_product(lower[len - 2], lower[len - 1], x) <= 0) {
+		while ((len = lower.size()) >= 2 && cross_product(lower[len - 2], lower[len - 1], x) <= 0)
 			lower.pop_back();
-		}
 		lower.emplace_back(x);
 	}
 
