@@ -1,66 +1,84 @@
 #include <jni.h>
 #include <stdio.h>
-#include <stdbool.h>
 #include <stdlib.h>
 
-struct stack_frame
-{
-    const char* file_name;
-    const char* class_name;
-    const char* method_name;
-    unsigned line_number;
-    bool is_native;
-};
+#include "stacktrace.h"
 
-struct stack_trace
+static jsize str_length_safe(JNIEnv *env, jstring str)
 {
-    size_t len;
-    struct stack_frame frames[];
-};
-
-static char* copy_str(JNIEnv* env, jstring str, const jsize len, char* p)
-{
-        (*env)->GetStringUTFRegion(env, str, 0, len, p);
-        p += len;
-        *p++ = 0;
-
-        return p;
+    return str ? (*env)->GetStringUTFLength(env, str) : 0;
 }
 
-jobject java_stacktrace(JNIEnv* env)
+static char* copy_str_safe(JNIEnv* env, jstring str, const jsize len, char* p)
 {
+    if (str && len)
+    {
+        (*env)->GetStringUTFRegion(env, str, 0, len, p);
+        p += len;
+    }
+    *p++ = 0;
+
+    return p;
+}
+
+// Errors
+static char ERR_INTERNAL[] = "Internal error";
+static char ERR_OUT_OF_MEMORY[] = "Out of Memory";
+
+struct stack_trace* java_stacktrace(JNIEnv* env, struct stack_trace_error *ste)
+{
+#   define ERR(MSG) \
+    do \
+    { \
+        if (ste) \
+        { \
+            ste->msg = (MSG); \
+            ste->file_name = __FILE__; \
+            ste->line_number = __LINE__; \
+        } \
+        return NULL; \
+    } \
+    while(0)
+
+#   define CHECK(COND, MSG) if (!(COND)) ERR(MSG)
+
+    // TODO: jmethodID could be stored for later use
+    // TODO: JNIEnv can be stored per thread
+
     jclass cls = (*env)->FindClass(env, "java/lang/Thread");
-    fprintf(stderr, "XYZ:cls: %p\n", cls);
+    CHECK(cls, ERR_INTERNAL);
+
     jmethodID mid = (*env)->GetStaticMethodID(env, cls, "currentThread", "()Ljava/lang/Thread;");
-    fprintf(stderr, "XYZ:mid: %p\n", mid);
+    CHECK(mid, ERR_INTERNAL);
     
     jobject current_thread = (*env)->CallStaticObjectMethod(env, cls, mid);
-    fprintf(stderr, "XYZ:current_thread: %p\n", current_thread);
+    CHECK(current_thread, ERR_INTERNAL);
+
     jmethodID get_stack_trace_mid = (*env)->GetMethodID(env, cls, "getStackTrace", "()[Ljava/lang/StackTraceElement;");
-    fprintf(stderr, "XYZ:get_stack_trace_mid: %p\n", get_stack_trace_mid);
+    CHECK(get_stack_trace_mid, ERR_INTERNAL);
+    
     jobjectArray stack_trace = (*env)->CallObjectMethod(env, current_thread, get_stack_trace_mid);
-    fprintf(stderr, "XYZ:stack_trace is: %p\n", stack_trace);
+    CHECK(stack_trace, ERR_INTERNAL);
 
     const jsize len = (*env)->GetArrayLength(env, stack_trace);
-    fprintf(stderr, "XYZ: array-length: %zu\n", len);
 
     jclass stack_trace_elelemnt_cls = (*env)->FindClass(env, "java/lang/StackTraceElement");
-    fprintf(stderr, "XYZ:cls: %p\n", cls);
+    CHECK(stack_trace_elelemnt_cls, ERR_INTERNAL);
 
     jmethodID get_file_name_mid = (*env)->GetMethodID(env, stack_trace_elelemnt_cls, "getFileName", "()Ljava/lang/String;");
-    fprintf(stderr, "XYZ: get_file_name_mid: %p\n", get_file_name_mid);
+    CHECK(get_file_name_mid, ERR_INTERNAL);
 
     jmethodID get_class_name_mid = (*env)->GetMethodID(env, stack_trace_elelemnt_cls, "getClassName", "()Ljava/lang/String;");
-    fprintf(stderr, "XYZ: get_class_name_mid: %p\n", get_class_name_mid);
+    CHECK(get_class_name_mid, ERR_INTERNAL);
 
     jmethodID get_method_name_mid = (*env)->GetMethodID(env, stack_trace_elelemnt_cls, "getMethodName", "()Ljava/lang/String;");
-    fprintf(stderr, "XYZ: get_method_name_mid: %p\n", get_method_name_mid);
+    CHECK(get_method_name_mid, ERR_INTERNAL);
 
     jmethodID get_line_number_mid = (*env)->GetMethodID(env, stack_trace_elelemnt_cls, "getLineNumber", "()I");
-    fprintf(stderr, "XYZ: get_line_number_mid: %p\n", get_line_number_mid);
+    CHECK(get_line_number_mid, ERR_INTERNAL);
 
     jmethodID is_native_method_mid = (*env)->GetMethodID(env, stack_trace_elelemnt_cls, "isNativeMethod", "()Z");
-    fprintf(stderr, "XYZ: is_native_method_mid: %p\n", is_native_method_mid);
+    CHECK(is_native_method_mid, ERR_INTERNAL);
 
     jstring file_names[len];
     jsize file_names_lens[len];
@@ -81,41 +99,38 @@ jobject java_stacktrace(JNIEnv* env)
         line_numbers[i] = (*env)->CallIntMethod(env, elem_obj, get_line_number_mid);
         is_native_methods[i] = (*env)->CallBooleanMethod(env, elem_obj, is_native_method_mid);
 
-        total_len += (file_names_lens[i] = (*env)->GetStringUTFLength(env, file_names[i])) + 1;
-        total_len += (class_names_lens[i] = (*env)->GetStringUTFLength(env, class_names[i])) + 1;
-        total_len += (method_names_lens[i] = (*env)->GetStringUTFLength(env, method_names[i])) + 1;
+        total_len += (file_names_lens[i] = str_length_safe(env, file_names[i])) + 1;
+        total_len += (class_names_lens[i] = str_length_safe(env, class_names[i])) + 1;
+        total_len += (method_names_lens[i] = str_length_safe(env, method_names[i])) + 1;
     }
 
     struct stack_trace *st = malloc(total_len);
+    CHECK(st, ERR_OUT_OF_MEMORY);
     st->len = len;
     struct stack_frame* frames = st->frames;
     char* p = (char*)&frames[len];
     for (jsize i = 0; i < len; ++i)
     {
         frames[i].file_name = p;
-        p = copy_str(env, file_names[i], file_names_lens[i], p);
+        p = copy_str_safe(env, file_names[i], file_names_lens[i], p);
 
         frames[i].class_name = p;
-        p = copy_str(env, class_names[i], class_names_lens[i], p);
+        p = copy_str_safe(env, class_names[i], class_names_lens[i], p);
 
         frames[i].method_name = p;
-        p = copy_str(env, method_names[i], method_names_lens[i], p);
+        p = copy_str_safe(env, method_names[i], method_names_lens[i], p);
 
-        frames[i].line_number = is_native_methods[i] ? ~0U : line_numbers[i];
+        frames[i].line_number = is_native_methods[i] ? -1 : line_numbers[i];
         frames[i].is_native = is_native_methods[i];
     }
 
-    fprintf(stderr, "XYZ: total len: %zu\n", (size_t)total_len);
+    return st;
 
-    for (size_t i = 0; i < st->len; ++i)
-    {
-        struct stack_frame* f = &st->frames[i];
-        fprintf(stderr, "XYZ: f: %s:%u %s::%s\n", f->file_name, f->line_number, f->class_name, f->method_name);
-    }
-
-    return stack_trace;
+#undef CHECK
+#undef ERR
 }
-
+#if 0
+// Experiments, could work but are unnecesserally complicated.
 jobject java_stacktrace0(JNIEnv* env)
 {
     {
@@ -235,9 +250,26 @@ jobject java_stacktrace4(JNIEnv* env)
     }
 
 }
+#endif
 
-JNIEXPORT jobject JNICALL Java_TestJNI_runStacktrace(JNIEnv* env, jobject obj)
+JNIEXPORT void JNICALL Java_TestJNI_runStacktrace(JNIEnv* env, jobject obj)
 {
     (void)obj;
-    return java_stacktrace(env);
+
+    struct stack_trace_error ste;
+    struct stack_trace* st = java_stacktrace(env, &ste);
+
+    if (!st)
+    {
+        fprintf(stderr, "Cannot obtain stacktrace through JNI: %s (%s:%d)\n", ste.msg, ste.file_name, ste.line_number);
+        return;
+    }
+
+    for (size_t i = 0; i < st->len; ++i)
+    {
+        struct stack_frame* f = &st->frames[i];
+        fprintf(stderr, "XYZ: f: %s:%d%s %s::%s\n", f->file_name, f->line_number, f->is_native ? "(native)" : "", f->class_name, f->method_name);
+    }
+
+    free(st);
 }
