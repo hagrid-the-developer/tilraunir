@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+"""
+* Documentation for FFT under numpy: https://docs.scipy.org/doc/numpy/reference/routines.fft.html
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 
