@@ -17,20 +17,20 @@ Examples taken from [Brian 2 tutorial: Intro to Brian neurons](https://github.co
 
 * multiple-neurons.py:
 
-  * Spikes and firing rate for various indexes and v0_max values:
+  * Spikes and firing rate for various indexes and `v0` values:
 <img src="images/multiple-neurons_firing-rate.png" width=100%>
 
-  * Graph of V for neurons with various indexes:
+  * Graph of `V` for neurons with different indexes:
 <img src="images/multiple-neurons_v.png" width=100%>
 
 * stochastic-neuron.py:
 
-  * Spikes and firing rate for various indexes and v0_max values:
+  * Spikes and firing rate for various indexes and `v0` values:
 <img src="images/stochastic-neurons_firing-rate.png" width=100%>
 
-  * Graph of V for neurons with various indexes:
+  * Graph of `V` for neurons with different indexes:
 <img src="images/stochastic-neurons_v.png" width=100%>
 
-As one can see, firing rate is non-zero for v0 < 1 and even neuron 0 has some non-zero values for V (but it has no spikes). This is because stochasti deffirential was added to the equations.
+As one can see, firing rate is non-zero for `v0 < 1` and even neuron `0` has some non-zero values for `V` (but it has no spikes). This is because stochastic deffirential was added to the equations.
 
 
