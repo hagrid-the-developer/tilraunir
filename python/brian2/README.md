@@ -15,7 +15,7 @@ Results:
 
 * multiple-neurons.py:
 
-![](images/multiple-neurons.svg =750x)
+<img src="images/multiple-neurons.png" width=120%>
 
 
 
