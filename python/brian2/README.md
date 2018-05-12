@@ -16,11 +16,9 @@ Results:
 * multiple-neurons.py:
 
   * Spikes and firing rate for various indexes:
-
 <img src="images/multiple-neurons_firing-rate.png" width=100%>
 
   * Graph of V for neurons with various indexes:
-
 <img src="images/multiple-neurons_v.png" width=100%>
 
 
