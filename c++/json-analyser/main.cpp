@@ -45,11 +45,15 @@ std::string load_json(const std::string& host, const unsigned short port, const 
 	req.set(http::field::accept, "application/json");
 	req.set(http::field::user_agent, "Beast");
 
-	http::write(sock, req);
+	http::write(sock, req, error_code);
+	if (error_code)
+		throw meave::Error("Cannot send HTTP request to ") << host << ": " << error_code.message();
 
 	boost::beast::flat_buffer buffer;
 	http::response_parser<http::string_body> parser;
-	http::read(sock, buffer, parser);
+	http::read(sock, buffer, parser, error_code);
+	if (error_code)
+		throw meave::Error("Cannot read HTTP response from ") << host << ": " << error_code.message();
 
 	return parser.get().body();
 }
