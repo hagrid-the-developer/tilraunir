@@ -24,7 +24,7 @@ nio::ip::address resolve(nio::io_service& io, const std::string& host) {
 	throw meave::Error("Cannot resolve: ") << host << " : " << error_code.message();
 }
 
-std::string load_json(const std::string& host, const unsigned short port, const std::string& path) {
+std::string load_json(const std::string& host, const unsigned short port, const std::string& path) try {
 	nio::io_service io;
 
 	boost::system::error_code error_code;
@@ -56,6 +56,8 @@ std::string load_json(const std::string& host, const unsigned short port, const 
 		throw meave::Error("Cannot read HTTP response from ") << host << ": " << error_code.message();
 
 	return parser.get().body();
+} catch (const boost::system::system_error& e) {
+	throw meave::Error("Cannot make HTTP request for: ") << host << ": " << e.what();
 }
 
 } /* anonymous namespace */
