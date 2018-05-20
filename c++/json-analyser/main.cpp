@@ -4,12 +4,15 @@
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
 #include <iostream>
+#include <nlohmann/json.hpp>
 
 namespace {
 
 namespace nio = boost::asio;
 namespace beast = boost::beast;
 namespace http = boost::beast::http;
+
+using json = nlohmann::json;
 
 nio::ip::address resolve(nio::io_service& io, const std::string& host) {
 	nio::ip::tcp::resolver resolver(io);
@@ -24,7 +27,7 @@ nio::ip::address resolve(nio::io_service& io, const std::string& host) {
 	throw meave::Error("Cannot resolve: ") << host << " : " << error_code.message();
 }
 
-std::string load_json(const std::string& host, const unsigned short port, const std::string& path) try {
+json load_json(const std::string& host, const unsigned short port, const std::string& path) try {
 	nio::io_service io;
 
 	boost::system::error_code error_code;
@@ -55,7 +58,7 @@ std::string load_json(const std::string& host, const unsigned short port, const 
 	if (error_code)
 		throw meave::Error("Cannot read HTTP response from ") << host << ": " << error_code.message();
 
-	return parser.get().body();
+	return json::parse(parser.get().body());
 } catch (const boost::system::system_error& e) {
 	throw meave::Error("Cannot make HTTP request for: ") << host << ": " << e.what();
 }
@@ -64,6 +67,7 @@ std::string load_json(const std::string& host, const unsigned short port, const 
 
 int
 main(void) {
-	const auto json = load_json("meave.net", 80, "/xyz.json");
-	std::cout << "Response body: " << json << std::endl;
+	const auto j = load_json("meave.net", 80, "/xyz.json");
+	std::cout << "Response body: " << j << std::endl;
+	std::cout << "Value of PI: " << j["pi"] << std::endl;
 }
