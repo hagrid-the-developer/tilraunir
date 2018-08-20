@@ -10,3 +10,14 @@ log2 n = go 0 1 n
     go res pow n
        | 2*pow > n = res
        | otherwise = go (res+1) (2*pow) n
+
+
+replicate' :: Int -> a -> [a]
+replicate' 0 a = []
+replicate' n a = [a] ++ replicate' (n - 1) a
+
+
+(!!$) :: [a] -> Int -> a
+(x:xs) !!$ 0 = x
+[] !!$ n = error "index out of range"
+(x:xs) !!$ n = xs !!$ (n - 1)
