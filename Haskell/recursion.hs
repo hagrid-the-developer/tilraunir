@@ -1,5 +1,6 @@
 power x n
       | n > 1 = x * power x (n - 1)
+      | n < 0 = power (1/x) (-n)
       | n == 1 = x
       | n == 0 = 1
 
