@@ -21,3 +21,9 @@ replicate' n a = [a] ++ replicate' (n - 1) a
 (x:xs) !!$ 0 = x
 [] !!$ n = error "index out of range"
 (x:xs) !!$ n = xs !!$ (n - 1)
+
+
+zip' :: [a] -> [b] -> [(a, b)]
+zip' [] y = []
+zip' x [] = []
+zip' (x:xs) (y:ys) = [(x, y)] ++ zip' xs ys
