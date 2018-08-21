@@ -14,7 +14,7 @@ log2 n = go 0 1 n
 
 replicate' :: Int -> a -> [a]
 replicate' 0 a = []
-replicate' n a = [a] ++ replicate' (n - 1) a
+replicate' n a = a : replicate' (n - 1) a
 
 
 (!!$) :: [a] -> Int -> a
@@ -26,4 +26,4 @@ replicate' n a = [a] ++ replicate' (n - 1) a
 zip' :: [a] -> [b] -> [(a, b)]
 zip' [] y = []
 zip' x [] = []
-zip' (x:xs) (y:ys) = [(x, y)] ++ zip' xs ys
+zip' (x:xs) (y:ys) = (x, y) : zip' xs ys
