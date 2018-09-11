@@ -1,12 +1,7 @@
 static PRIMES: [u32; 6] = [2, 3, 5, 7, 11, 13];
 
 fn divisible(num: u32) -> bool {
-    for x in &PRIMES {
-        if num % x == 0 {
-            return true;
-        }
-    }
-    return false;
+    PRIMES.iter().any(|x| { num % x == 0 })
 }
 
 fn exists(maximum: u32) -> u32 {
