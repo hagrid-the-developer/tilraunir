@@ -1,0 +1,6 @@
+[package]
+name = "parse_client_output"
+version = "0.1.0"
+authors = ["Daniel Fiala <freelancer@meave.biz>"]
+
+[dependencies]
