@@ -4,3 +4,4 @@ version = "0.1.0"
 authors = ["Daniel Fiala <freelancer@meave.biz>"]
 
 [dependencies]
+regex = "1"
