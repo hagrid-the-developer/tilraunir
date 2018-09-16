@@ -1,5 +1,8 @@
 extern crate regex;
 
+#[macro_use]
+extern crate lazy_static;
+
 use std::env;
 use std::io::BufReader;
 use std::io::BufRead;
@@ -39,30 +42,34 @@ fn report(items: &Items) {
     println!("        Avg req time: {:.3}s", items.total_time/(len as f64));
 }
 
-fn parse_line(line: &String) -> Option<LineType> {
-    let upload_re = Regex::new(r"Average upload throughput: ([0-9]+[.][0-9]*) Mbit[/]s").unwrap();
-    let up = upload_re.captures(line);
+fn parse_line(line: &str) -> Option<LineType> {
+    lazy_static! {
+        static ref UPLOAD_RE: Regex = Regex::new(r"Average upload throughput: ([0-9]+[.][0-9]*) Mbit[/]s").unwrap();
+        static ref DOWNLOAD_RE: Regex = Regex::new(r"Average download throughput: ([0-9]+[.][0-9]*) Mbit[/]s").unwrap();
+        static ref CONTENT_RE: Regex = Regex::new(r"content-length:([0-9]+)").unwrap();
+        static ref TOTAL_TIME_RE: Regex = Regex::new(r"real\s+(\d+)m(\d+[.]\d+)s").unwrap();
+        static ref NEW_SERIES_RE: Regex = Regex::new(r"[*]{20}").unwrap();
+    }
+
+    let up = UPLOAD_RE.captures(line);
     match up {
         None => {},
         Some(ref g) => return Some(LineType::UploadThroughput(g.get(1).unwrap().as_str().parse().unwrap()))
     }
 
-    let download_re = Regex::new(r"Average download throughput: ([0-9]+[.][0-9]*) Mbit[/]s").unwrap();
-    let down = download_re.captures(line);
+    let down = DOWNLOAD_RE.captures(line);
     match down {
         None => {},
         Some(ref g) => return Some(LineType::DownloadThroughput(g.get(1).unwrap().as_str().parse().unwrap()))
     }
 
-    let content_re = Regex::new(r"content-length:([0-9]+)").unwrap();
-    let cont = content_re.captures(line);
+    let cont = CONTENT_RE.captures(line);
     match cont {
         None => {},
         Some(ref g) => return Some(LineType::ContentLength(g.get(1).unwrap().as_str().parse().unwrap()))
     }
 
-    let total_time_re = Regex::new(r"real\s+(\d+)m(\d+[.]\d+)s").unwrap();
-    let total_time = total_time_re.captures(line);
+    let total_time = TOTAL_TIME_RE.captures(line);
     match total_time {
         None => {},
         Some(ref g) => {
@@ -72,8 +79,7 @@ fn parse_line(line: &String) -> Option<LineType> {
         }
     }
 
-    let new_series_re = Regex::new(r"[*]{20}").unwrap();
-    if new_series_re.is_match(line) {
+    if NEW_SERIES_RE.is_match(line) {
         return Some(LineType::NewSeries);
     }
 
@@ -98,7 +104,7 @@ fn process_file(description: String, file_path: String) {
     let mut len_idx = 0;
     for line in BufReader::new(&f).lines() {
         let l = line.unwrap();
-        let lt = parse_line(&l);
+        let lt = parse_line(&l[..]);
 
         match lt {
             None => {},
