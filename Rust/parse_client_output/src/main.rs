@@ -86,8 +86,6 @@ fn parse_line(line: &str) -> Option<LineType> {
     return None;
 }
 
-// Parsing of RE is extremely slow, but !lazy_static and regex! macros
-// didn't work in my setup.
 fn process_file(description: String, file_path: String) {
     println!("{}", description);
 
