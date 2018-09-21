@@ -52,31 +52,25 @@ fn parse_line(line: &str) -> Option<LineType> {
     }
 
     let up = UPLOAD_RE.captures(line);
-    match up {
-        None => {},
-        Some(ref g) => return Some(LineType::UploadThroughput(g.get(1).unwrap().as_str().parse().unwrap()))
+    if let Some(ref g) = up {
+        return Some(LineType::UploadThroughput(g.get(1).unwrap().as_str().parse().unwrap()))
     }
 
     let down = DOWNLOAD_RE.captures(line);
-    match down {
-        None => {},
-        Some(ref g) => return Some(LineType::DownloadThroughput(g.get(1).unwrap().as_str().parse().unwrap()))
+    if let Some(ref g) = down {
+        return Some(LineType::DownloadThroughput(g.get(1).unwrap().as_str().parse().unwrap()))
     }
 
     let cont = CONTENT_RE.captures(line);
-    match cont {
-        None => {},
-        Some(ref g) => return Some(LineType::ContentLength(g.get(1).unwrap().as_str().parse().unwrap()))
+    if let Some(ref g) = cont {
+        return Some(LineType::ContentLength(g.get(1).unwrap().as_str().parse().unwrap()))
     }
 
     let total_time = TOTAL_TIME_RE.captures(line);
-    match total_time {
-        None => {},
-        Some(ref g) => {
+    if let Some(ref g) = total_time {
             let min: f64  = g.get(1).unwrap().as_str().parse().unwrap();
             let sec: f64 = g.get(2).unwrap().as_str().parse().unwrap();
             return Some(LineType::TotalTime(60.0*min+sec))
-        }
     }
 
     if NEW_SERIES_RE.is_match(line) {
