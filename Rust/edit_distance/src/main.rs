@@ -1,4 +1,7 @@
 // * https://www.programming-idioms.org/idiom/26/create-a-2-dimensional-array/448/rust
+// * https://doc.rust-lang.org/std/iter/trait.Iterator.html
+// * https://doc.rust-lang.org/std/primitive.str.html
+// * https://doc.rust-lang.org/std/index.html
 
 fn edit_distance(s1: &str, s2: &str) -> usize {
     let len1 = s1.chars().count();
