@@ -1,18 +1,17 @@
-fun change(amount: u32, coins: &[u32])
+fn change(amount: u32, coins: &[u32]) -> u32
 {
-    let m = std::u32::MAX;
-    let mut res = [amount + 1; m];
+    const M: u32 = std::u32::MAX;
+    let mut res: Vec<u32> = vec![M; (amount + 1) as usize];
     res[0] = 0;
-    for val in (1..amount) {
-        let count = coins.iter().map(|x| { if (x <= val) { res[x - val] } else { m } }).min();
-        if (count < m) {
-            res[va] = count + 1;
+    for val in 1..amount+1 {
+        if let Some(count) = coins.iter().filter(|&&x| x <= val).map(|&x| res[(val - x) as usize]).min() {
+            res[val as usize] = count + 1;
         }
     }
-    return res[amount];
+    return res[amount as usize];
 }
 
 fn main() {
     let coins = [1, 3, 9, 10];
-    println!("res: ", change(15, coins[..));
+    println!("res: {}", change(15, &coins[..]));
 }
