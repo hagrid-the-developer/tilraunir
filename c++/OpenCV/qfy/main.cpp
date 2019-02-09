@@ -76,7 +76,7 @@ Indexes find_key_frames(Frames const& frames) {
 
     Indexes indexes;
     for (std::size_t i = 0; i < total_diffs.size(); ++i) {
-        if (cv::abs(total_diffs[i][0] - mean[0]) > std_dev[0])
+        if (total_diffs[i][0] >= mean[0] + std_dev[0])
             indexes.push_back(i + 1);
     }
     return indexes;
