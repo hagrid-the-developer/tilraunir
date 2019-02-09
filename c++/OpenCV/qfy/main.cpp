@@ -1,6 +1,8 @@
+#include <cassert>
 #include <cstdio>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <exception>
 #include <opencv2/opencv.hpp>
 #include <optional>
@@ -81,20 +83,22 @@ Indexes find_key_frames(Frames const& frames) {
 }
 
 unsigned median(cv::Mat const& mat, cv::Rect const& roi) {
-    std::vector<uchar> vals;
-    vals.reserve(std::size_t(roi.area()));
+    int counts[256];
+    std::memset(counts, 0, sizeof(counts));
+    const auto total_count = roi.area();
+
     for (int j = roi.y; j < roi.y + roi.height; ++j) {
         for (int i = roi.x; i < roi.x + roi.width; ++i) {
             const auto val = mat.at<uchar>(j, i);
-            vals.push_back(val);
+            ++counts[val];
         }
     }
 
-    if (vals.empty())
-        return {};
-
-    std::sort(std::begin(vals), std::end(vals));
-    return vals[vals.size()/2];
+    unsigned median = 0;
+    for (int count = counts[0]; count < total_count/2; count += counts[++median]) {
+        assert(median < sizeof(counts));
+    }
+    return median;
 }
 
 void medians(Frames const& frames, Indexes const& indexes, const Dimension grid_dim, const Dimension video_dim) {
