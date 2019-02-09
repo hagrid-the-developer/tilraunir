@@ -90,7 +90,7 @@ unsigned median(cv::Mat const& mat, cv::Rect const& roi) {
     uchar const* data = mat.data;
     std::size_t const stride = mat.step;
     for (int j = roi.y; j < roi.y + roi.height; ++j) {
-        uchar const* row = &data[j*stride + roi.x];
+        uchar const* row = &data[std::size_t(j)*stride + std::size_t(roi.x)];
         for (int i = 0; i < roi.width; ++i) {
             const auto val = row[i];
             ++counts[val];
