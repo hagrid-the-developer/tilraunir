@@ -80,8 +80,21 @@ Indexes find_key_frames(Frames const& frames) {
     return indexes;
 }
 
-double median(cv::Mat) {
-    return {};
+unsigned median(cv::Mat const& mat, cv::Rect const& roi) {
+    std::vector<uchar> vals;
+    vals.reserve(std::size_t(roi.area()));
+    for (int j = roi.y; j < roi.y + roi.height; ++j) {
+        for (int i = roi.x; i < roi.x + roi.width; ++i) {
+            const auto val = mat.at<uchar>(j, i);
+            vals.push_back(val);
+        }
+    }
+
+    if (vals.empty())
+        return {};
+
+    std::sort(std::begin(vals), std::end(vals));
+    return vals[vals.size()/2];
 }
 
 void medians(Frames const& frames, Indexes const& indexes, const Dimension grid_dim, const Dimension video_dim) {
@@ -96,16 +109,15 @@ void medians(Frames const& frames, Indexes const& indexes, const Dimension grid_
         for (int j = 0; j < grid_dim.y; ++j) {
             int const h = subrect_h + (j < video_dim.y % grid_dim.y);
             submatpos.emplace_back(x, y, w, h);
-            fprintf(stderr, "Rect: %d, %d, %d, %d\n", submatpos.back().x, submatpos.back().y, submatpos.back().width, submatpos.back().height);
             y += h;
         }
         x += w;
     }
     for (const auto idx: indexes) {
         auto const& frame = frames[idx]._frame;
-        printf("%lf, ", frames[idx]._pos_msec);
+        printf("%lf", frames[idx]._pos_msec);
         for (auto const& rect: submatpos) {
-            printf(", %lf", median(cv::Mat(frame, rect)));
+            printf(", %u", median(frame, rect));
         }
         putc('\n', stdout);
     }
