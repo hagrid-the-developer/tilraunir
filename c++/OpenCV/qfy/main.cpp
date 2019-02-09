@@ -1,3 +1,16 @@
+/*
+ * Initial implementation, the code can compile (Ubuntu 18.04) and returns some values without a crash.
+ * Values make sense: medians are different for subsequent key-frames.
+ *
+ * Code deserves further testing development:
+ *  - All frames are loaded to the memory. We should probably use some sliding window.
+ *  - Median calculation can be further optimized. Eg. we can calculate all medians
+ *      for one row of the grid in one step. This way we would go through the frame
+ *      in a more cache-friendly way.
+ *   - Median can be optimized with vector instructions.
+ *  * I am not sure, whether I do a conversion of color to gray correctly (color spaces).
+ */
+
 #include <cassert>
 #include <cstdio>
 #include <cstdint>
@@ -24,7 +37,7 @@ struct Dimension {
 Dimension readDimension(char const* s) {
     int x, y;
     if (std::sscanf(s, "%dx%d", &x, &y) != 2)
-        throw Error{"Cannot parse dimnension"};
+        throw Error{"Cannot parse dimension"};
     if (x <= 0 || y <= 0)
         throw Error{"Dimension items must be positive"};
     return Dimension{x, y};
