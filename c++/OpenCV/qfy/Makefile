@@ -3,10 +3,10 @@ all: main
 
 main: main.o
 
-	g++ -std=c++14 $^ -o $@ $(shell pkg-config --libs opencv)
+	g++ -std=c++17 $^ -o $@ $(shell pkg-config --libs opencv)
 
 main.o: main.cpp
-	g++ -std=c++14 $(shell pkg-config --cflags opencv) -c $^
+	g++ -std=c++17 $(shell pkg-config --cflags opencv) -c $^
 
 .PHONY: clean
 clean:

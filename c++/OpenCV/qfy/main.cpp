@@ -1,12 +1,31 @@
 #include <cstdio>
 #include <cstdint>
 #include <cstdlib>
+#include <exception>
 #include <opencv2/opencv.hpp>
+#include <optional>
 #include <vector>
 
-void help(char const* prog_name) {
-    printf("Usage: %s <file-path>\n\n", prog_name);
+#include "error.hpp"
+
+[[noreturn]] void help(char const* prog_name) {
+    printf("Usage: %s <file-path> <dimension>\n\n", prog_name);
     std::exit(1);
+}
+
+class ShowHelpException: public std::exception{};
+
+struct Dimension {
+    int x, y;
+};
+
+Dimension readDimension(char const* s) {
+    int x, y;
+    if (std::sscanf(s, "%dx%d", &x, &y) != 2)
+        throw Error{"Cannot parse dimnension"};
+    if (x <= 0 || y <= 0)
+        throw Error{"Dimension items must be positive"};
+    return Dimension{x, y};
 }
 
 struct Frame {
@@ -15,9 +34,19 @@ struct Frame {
 };
 using Frames = std::vector<Frame>;
 
-void load_frames(char const* file_path, Frames& frames) {
+void load_frames(char const* file_path, const Dimension grid_dim, Frames& frames, Dimension& video_dim) {
     cv::VideoCapture cap{file_path};
-    while(cap.isOpened()) {
+    if (!cap.isOpened())
+        throw Error{"Cannot open video file"};
+
+    video_dim = Dimension {
+        int(cap.get(cv::CAP_PROP_FRAME_WIDTH)),
+        int(cap.get(cv::CAP_PROP_FRAME_HEIGHT))
+    };
+    if (video_dim.x <= 0 || video_dim.y <= 0 || video_dim.x < grid_dim.x || video_dim.y < grid_dim.y)
+        throw Error{"Invalid video dimensions: %d, %d", video_dim.x, video_dim.y};
+
+    for (;;) {
         const double pos = cap.get(cv::CAP_PROP_POS_MSEC);
         cv::Mat frame;
         if(!cap.read(frame))
@@ -45,24 +74,68 @@ Indexes find_key_frames(Frames const& frames) {
 
     Indexes indexes;
     for (std::size_t i = 0; i < total_diffs.size(); ++i) {
-        if (std::abs(total_diffs[i][0] - mean[0]) > std_dev[0])
+        if (cv::abs(total_diffs[i][0] - mean[0]) > std_dev[0])
             indexes.push_back(i + 1);
     }
     return indexes;
 }
 
+double median(cv::Mat) {
+    return {};
+}
+
+void medians(Frames const& frames, Indexes const& indexes, const Dimension grid_dim, const Dimension video_dim) {
+    const int subrect_w = video_dim.x/grid_dim.x;
+    const int subrect_h = video_dim.y/grid_dim.y;
+
+    std::vector<cv::Rect> submatpos;
+    int x = 0;
+    for (int i = 0; i < grid_dim.x; ++i) {
+        int const w = subrect_w + (i < video_dim.x % grid_dim.x);
+        int y = 0;
+        for (int j = 0; j < grid_dim.y; ++j) {
+            int const h = subrect_h + (j < video_dim.y % grid_dim.y);
+            submatpos.emplace_back(x, y, w, h);
+            fprintf(stderr, "Rect: %d, %d, %d, %d\n", submatpos.back().x, submatpos.back().y, submatpos.back().width, submatpos.back().height);
+            y += h;
+        }
+        x += w;
+    }
+    for (const auto idx: indexes) {
+        auto const& frame = frames[idx]._frame;
+        printf("%lf, ", frames[idx]._pos_msec);
+        for (auto const& rect: submatpos) {
+            printf(", %lf", median(cv::Mat(frame, rect)));
+        }
+        putc('\n', stdout);
+    }
+}
+
 int
 main(int const argc, char const* argv[]) {
-    if (argc != 3)
+    try {
+        if (argc != 3)
+            throw ShowHelpException{};
+
+        const auto file_path = argv[1];
+        const Dimension grid_dim = readDimension(argv[2]);
+
+        Frames frames;
+        Dimension video_dim;
+        load_frames(file_path, grid_dim, frames, video_dim);
+        if (frames.empty()) {
+            throw Error("Video is empty");
+        }
+
+        fprintf(stderr, "Frames loaded: %zux%dx%d\n", frames.size(), video_dim.x, video_dim.y);
+
+        const auto indexes = find_key_frames(frames);
+        fprintf(stderr, "Found %zu key frames\n", indexes.size());
+        medians(frames, indexes, grid_dim, video_dim);
+    } catch (ShowHelpException const&) {
         help(argc > 0 ? argv[0] : "pex");
-
-    const auto file_path = argv[1];
-
-    Frames frames;
-    load_frames(file_path, frames);
-    fprintf(stderr, "Frames loaded\n");
-    const auto indexes = find_key_frames(frames);
-    for (const auto idx: indexes) {
-        printf("%lf, \n", frames[idx]._pos_msec);
+    } catch (Error const& e) {
+        fprintf(stderr, "Error: %s\n", e.what());
+        std::exit(2);
     }
 }
