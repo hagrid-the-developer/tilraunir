@@ -8,7 +8,6 @@
  *      for one row of the grid in one step. This way we would go through the frame
  *      in a more cache-friendly way.
  *   - Median can be optimized with vector instructions.
- *  * I am not sure, whether I do a conversion of color to gray correctly (color spaces).
  */
 
 #include <cassert>
