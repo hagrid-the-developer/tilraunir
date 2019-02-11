@@ -9,7 +9,7 @@
 #include "str_printf.hpp"
 
 /*
- * FIXME: this calss is not 100%-correct, because copy-constructor of exception can throw exception.
+ * FIXME: this class is not 100%-correct, because copy-constructor of exception can throw exception.
  * std::runtime_error uses special buffer for this.
  */
 
