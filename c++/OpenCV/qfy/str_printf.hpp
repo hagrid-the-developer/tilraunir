@@ -1,5 +1,4 @@
-#ifndef MEAVE_STR_PRINTF_HPP_INCLUDED
-#	define MEAVE_STR_PRINTF_HPP_INCLUDED
+#pragma once
 
 #include <cassert>
 #include <cstdarg>
@@ -33,5 +32,3 @@ str_printf(const char *msg, ...) noexcept
 	va_end(args);
 	return ret;
 }
-
-#endif

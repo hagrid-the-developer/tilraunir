@@ -1,5 +1,4 @@
-#ifndef MEAVE_ERROR_HPP_INCLUDED
-#	define MEAVE_ERROR_HPP_INCLUDED
+#pragma once
 
 #include <cerrno>
 #include <cstdarg>
@@ -52,5 +51,3 @@ public:
 
 	virtual ~Error() noexcept { }
 };
-
-#endif
