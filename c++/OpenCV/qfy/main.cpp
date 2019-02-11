@@ -44,12 +44,12 @@ Dimension readDimension(char const* s) {
 }
 
 struct Frame {
-    double _pos_msec;
-    cv::Mat _frame;
+    double pos_msec;
+    cv::Mat frame;
 };
 using Frames = std::vector<Frame>;
 
-void load_frames(char const* file_path, const Dimension grid_dim, Frames& frames, Dimension& video_dim) {
+void loadframes(char const* file_path, const Dimension grid_dim, Frames& frames, Dimension& video_dim) {
     cv::VideoCapture cap{file_path};
     if (!cap.isOpened())
         throw Error{"Cannot open video file"};
@@ -78,7 +78,7 @@ Indexes find_key_frames(Frames const& frames) {
     std::vector<cv::Scalar> total_diffs;
     for (std::size_t i = 1; i < frames.size(); ++i) {
         cv::Mat diffs;
-        cv::absdiff(frames[i - 1]._frame, frames[i]._frame, diffs);
+        cv::absdiff(frames[i - 1].frame, frames[i].frame, diffs);
         const auto sum = cv::sum(diffs);
         total_diffs.push_back(sum);
     }
@@ -134,8 +134,8 @@ void medians(Frames const& frames, Indexes const& indexes, const Dimension grid_
         x += w;
     }
     for (const auto idx: indexes) {
-        auto const& frame = frames[idx]._frame;
-        printf("%lf", frames[idx]._pos_msec);
+        auto const& frame = frames[idx].frame;
+        printf("%lf", frames[idx].pos_msec);
         for (auto const& rect: submatpos) {
             printf(", %u", median(frame, rect));
         }
@@ -154,7 +154,7 @@ main(int const argc, char const* argv[]) {
 
         Frames frames;
         Dimension video_dim;
-        load_frames(file_path, grid_dim, frames, video_dim);
+        loadframes(file_path, grid_dim, frames, video_dim);
         if (frames.empty()) {
             throw Error("Video is empty");
         }
