@@ -4,7 +4,7 @@ import (
 	"log"
 	"net"
 	"os"
-	_ "quic/qpacket"
+	"quic/qpacket"
 	"quic/qnet"
 )
 
@@ -17,5 +17,13 @@ func main() {
 		}
 
 		l.Printf("Received packet from: %v, data: %v\n", *addr, pkt)
+
+		h, err := qpacket.ParseHeader(pkt)
+		if err != nil {
+			l.Printf("Cannot parse packet :-(\n")
+			return
+		}
+
+		l.Printf("Parsed header: %+v\n", h)
 	})
 }
