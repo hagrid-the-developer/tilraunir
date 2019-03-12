@@ -1,20 +1,23 @@
 package main
 
 import (
+	"bufio"
 	"eosopt"
 	"fmt"
 	"os"
 )
 
 func run() (err error) {
-	testCasesNum, err := eosopt.ReadNumOfTestCases(os.Stdin)
+	r := bufio.NewReader(os.Stdin)
+
+	testCasesNum, err := eosopt.ReadNumOfTestCases(r)
 	if err != nil {
 		return
 	}
 
 	for i := 0; i < int(testCasesNum); i++ {
 		var c eosopt.Case
-		if c, err = eosopt.ReadOneCase(os.Stdin); err != nil {
+		if c, err = eosopt.ReadOneCase(r); err != nil {
 			return
 		}
 
