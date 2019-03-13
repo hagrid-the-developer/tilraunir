@@ -21,7 +21,7 @@ func run() (err error) {
 			return
 		}
 
-		fmt.Printf("%d %d\n", c.SrcAccountsNum(), c.DstAccountsNum())
+		fmt.Printf("%d --> %v; %d --> %v\n", c.SrcAccountsNum(), c.SrcAccounts, c.DstAccountsNum(), c.DstAccounts)
 	}
 	return
 }
