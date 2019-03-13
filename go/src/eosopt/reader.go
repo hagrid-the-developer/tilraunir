@@ -16,19 +16,19 @@ func ReadNumOfTestCases(r io.Reader) (num uint, err error) {
 }
 
 type Case struct {
-	SrcAccounts []uint
-	DstAccounts []uint
+	SrcAccounts []int
+	DstAccounts []int
 }
 
-func(c Case) SrcAccountsNum() (int) {
+func (c Case) SrcAccountsNum() int {
 	return len(c.SrcAccounts)
 }
 
-func(c Case) DstAccountsNum() (int) {
+func (c Case) DstAccountsNum() int {
 	return len(c.DstAccounts)
 }
 
-func readUInts(r *bufio.Reader) (vals []uint, err error) {
+func readUInts(r *bufio.Reader) (vals []int, err error) {
 	txt, err := r.ReadString('\n')
 	if err != nil {
 		return
@@ -40,14 +40,13 @@ func readUInts(r *bufio.Reader) (vals []uint, err error) {
 		if err != nil {
 			return
 		}
-		vals = append(vals, uint(val))
+		vals = append(vals, int(val))
 	}
-	fmt.Printf("Array: %v\n", vals)
 	return
 }
 
 func ReadOneCase(r *bufio.Reader) (c Case, err error) {
-	var accountsNums []uint
+	var accountsNums []int
 	accountsNums, err = readUInts(r)
 	if err != nil {
 		return
@@ -56,13 +55,13 @@ func ReadOneCase(r *bufio.Reader) (c Case, err error) {
 		err = errors.New("Expected two numbers")
 	}
 
-	for n, x := range []*[]uint{&c.SrcAccounts, &c.DstAccounts} {
+	for n, x := range []*[]int{&c.SrcAccounts, &c.DstAccounts} {
 		*x, err = readUInts(r)
 		if err != nil {
 			return
 		}
 
-		if uint(len(*x)) != accountsNums[n] {
+		if len(*x) != accountsNums[n] {
 			err = errors.New("Unexpected number of input items")
 			return
 		}
@@ -73,11 +72,15 @@ func ReadOneCase(r *bufio.Reader) (c Case, err error) {
 
 type Solution struct {
 	SolutionExists bool
-	Votes [][]uint // First index -- source account, second index: target account
+	Votes          [][]int // First index -- source account, second index: target account
 }
 
-func (c Case) findSolution()(solution Solution, err error) {
-	srcs := make([]struct{idx int; val uint; count uint}, c.SrcAccountsNum())
+func (c Case) FindSolution() (solution Solution, err error) {
+	srcs := make([]struct {
+		idx   int
+		val   int
+		count uint
+	}, c.SrcAccountsNum())
 	for srcIdx, val := range c.SrcAccounts {
 		srcs[srcIdx].idx = srcIdx
 		srcs[srcIdx].val = val
@@ -87,64 +90,72 @@ func (c Case) findSolution()(solution Solution, err error) {
 		return srcs[i].val < srcs[j].val
 	})
 
-	var srcsForTargetsMaps []map[uint]bool
-	var targetsForSrcsMaps []map[uint]bool
+	srcsForTargetsMaps := make([]map[int]bool, c.SrcAccountsNum())
+	for srcIdx, _ := range srcsForTargetsMaps {
+		srcsForTargetsMaps[srcIdx] = make(map[int]bool)
+	}
+	targetsForSrcsMaps := make([]map[int]bool, c.DstAccountsNum())
+	for dstIdx, _ := range targetsForSrcsMaps {
+		targetsForSrcsMaps[dstIdx] = make(map[int]bool)
+	}
 
 	solutionExists := true // Let's think positively
 
 	for dstIdx, _ := range c.DstAccounts {
 		targetVal := c.DstAccounts[dstIdx]
-		origSrcIdx := -1
-		srcIdx := len(srcs)
+		srcIdx := sort.Search(len(srcs), func(i int) bool {
+			return srcs[i].val > targetVal
+		})
+		origSrcIdx := srcIdx
 		for targetVal > 0 {
-			srcIdx := sort.Search(srcIdx, func(i int) bool {
-				return srcs[i].val > targetVal
-			})
-			if origSrcIdx < 0 {
-				origSrcIdx = srcIdx
+			for srcIdx--; srcIdx >= 0 && srcs[srcIdx].count >= 30; srcIdx-- {
 			}
-			for ; srcIdx >= 0 && srcs[srcIdx].count >= 30; srcIdx-- {}
 			if srcIdx < 0 {
 				break
 			}
-			srcsForTargetsMaps[srcIdx][uint(dstIdx)] = true
-			targetsForSrcsMaps[dstIdx][uint(srcIdx)] = true
-			targetVal -= srcs[srcIdx].val
-			srcs[srcIdx].count++;
-		}
-		if targetVal > 0 {
-			targetVal := c.DstAccounts[dstIdx]
-			srcIdx := origSrcIdx
-			for ; srcIdx < len(srcs) && srcs[srcIdx].count >= 30; srcIdx++ {}
-			if srcIdx >= len(srcs) {
-				break
-			}
-
-			for prevSrcIdx, _ := range targetsForSrcsMaps[dstIdx] {
-				delete(srcsForTargetsMaps[prevSrcIdx], uint(dstIdx))
-				srcs[prevSrcIdx].count--
-			}
-			targetsForSrcsMaps[dstIdx] = make(map[uint]bool)
-
+			srcsForTargetsMaps[srcIdx][dstIdx] = true
+			targetsForSrcsMaps[dstIdx][srcIdx] = true
 			targetVal -= srcs[srcIdx].val
 			srcs[srcIdx].count++
-			srcsForTargetsMaps[srcIdx][uint(dstIdx)] = true
-			targetsForSrcsMaps[dstIdx][uint(srcIdx)] = true
+			/*if dstIdx == 1 {
+				fmt.Printf("xyz: dstIdx:%d srcIdx:%d targetVal:%d\n", dstIdx, srcIdx, targetVal)
+			}*/
+		}
+		if targetVal > 0 {
+			// Try to find bigger target
+			targetVal = c.DstAccounts[dstIdx]
+			srcIdx := origSrcIdx
+			for ; srcIdx < len(srcs) && srcs[srcIdx].count >= 30; srcIdx++ {
+			}
+			if srcIdx < len(srcs) {
+				// Undo the previous changes
+				for prevSrcIdx, _ := range targetsForSrcsMaps[dstIdx] {
+					delete(srcsForTargetsMaps[prevSrcIdx], dstIdx)
+					srcs[prevSrcIdx].count--
+				}
+				targetsForSrcsMaps[dstIdx] = make(map[int]bool)
+
+				targetVal -= srcs[srcIdx].val
+				srcs[srcIdx].count++
+				srcsForTargetsMaps[srcIdx][dstIdx] = true
+				targetsForSrcsMaps[dstIdx][srcIdx] = true
+			}
 		}
 		if targetVal > 0 {
 			solutionExists = false
 		}
+		//		fmt.Printf("xyz: targetVal:%d; solutinExists:%v\n", targetVal, solutionExists)
 	}
 
 	solution.SolutionExists = solutionExists
-	solution.Votes = make([][]uint, c.DstAccountsNum())
-	for srcIdx, _ := range c.SrcAccounts {
+	solution.Votes = make([][]int, c.SrcAccountsNum())
+	for srcIdx, _ := range solution.Votes {
 		for dstIdx, _ := range srcsForTargetsMaps[srcIdx] {
 			solution.Votes[srcIdx] = append(solution.Votes[srcIdx], dstIdx)
-			sort.Slice(solution.Votes[srcIdx], func(a, b int) bool {
-				return solution.Votes[srcIdx][a] < solution.Votes[srcIdx][b]
-			})
 		}
+		sort.Slice(solution.Votes[srcIdx], func(a, b int) bool {
+			return solution.Votes[srcIdx][a] < solution.Votes[srcIdx][b]
+		})
 	}
 
 	return

@@ -22,6 +22,27 @@ func run() (err error) {
 		}
 
 		fmt.Printf("%d --> %v; %d --> %v\n", c.SrcAccountsNum(), c.SrcAccounts, c.DstAccountsNum(), c.DstAccounts)
+
+		var solution eosopt.Solution
+		if solution, err = c.FindSolution(); err != nil {
+			return
+		}
+
+		acWA := "AC"
+		if !solution.SolutionExists {
+			acWA = "WA"
+		}
+		fmt.Printf("Case #%d: %s\n", i, acWA)
+
+		for _, dstArr := range solution.Votes {
+			for i, dstIdx := range dstArr {
+				if i > 0 {
+					fmt.Printf(", ")
+				}
+				fmt.Printf("%d", dstIdx)
+			}
+			fmt.Printf("\n")
+		}
 	}
 	return
 }
