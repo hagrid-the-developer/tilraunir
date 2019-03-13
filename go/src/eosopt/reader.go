@@ -94,29 +94,25 @@ func (c Case) FindSolution() (solution Solution, err error) {
 	for srcIdx, _ := range srcsForTargetsMaps {
 		srcsForTargetsMaps[srcIdx] = make(map[int]bool)
 	}
-	targetsForSrcsMaps := make([]map[int]bool, c.DstAccountsNum())
-	for dstIdx, _ := range targetsForSrcsMaps {
-		targetsForSrcsMaps[dstIdx] = make(map[int]bool)
-	}
 
 	solutionExists := true // Let's think positively
 
 	for dstIdx, _ := range c.DstAccounts {
 		targetVal := c.DstAccounts[dstIdx]
-		srcIdx := sort.Search(len(srcs), func(i int) bool {
+		idx := sort.Search(len(srcs), func(i int) bool {
 			return srcs[i].val > targetVal
 		})
-		origSrcIdx := srcIdx
+		origIdx := idx
 		for targetVal > 0 {
-			for srcIdx--; srcIdx >= 0 && srcs[srcIdx].count >= 30; srcIdx-- {
+			for idx--; idx >= 0 && srcs[idx].count >= 30; idx-- {
 			}
-			if srcIdx < 0 {
+			if idx < 0 {
 				break
 			}
+			srcIdx := srcs[idx].idx
 			srcsForTargetsMaps[srcIdx][dstIdx] = true
-			targetsForSrcsMaps[dstIdx][srcIdx] = true
-			targetVal -= srcs[srcIdx].val
-			srcs[srcIdx].count++
+			targetVal -= srcs[idx].val
+			srcs[idx].count++
 			/*if dstIdx == 1 {
 				fmt.Printf("xyz: dstIdx:%d srcIdx:%d targetVal:%d\n", dstIdx, srcIdx, targetVal)
 			}*/
@@ -124,21 +120,23 @@ func (c Case) FindSolution() (solution Solution, err error) {
 		if targetVal > 0 {
 			// Try to find bigger target
 			targetVal = c.DstAccounts[dstIdx]
-			srcIdx := origSrcIdx
-			for ; srcIdx < len(srcs) && srcs[srcIdx].count >= 30; srcIdx++ {
+			idx := origIdx
+			for ; idx < len(srcs) && srcs[idx].count >= 30; idx++ {
 			}
-			if srcIdx < len(srcs) {
-				// Undo the previous changes
-				for prevSrcIdx, _ := range targetsForSrcsMaps[dstIdx] {
-					delete(srcsForTargetsMaps[prevSrcIdx], dstIdx)
-					srcs[prevSrcIdx].count--
+			if idx < len(srcs) {
+				// Undo the previous changes; This could be made faster with another map
+				for prevIdx, _ := range srcs {
+					prevSrcIdx := srcs[prevIdx].idx
+					if srcsForTargetsMaps[prevSrcIdx][dstIdx] {
+						delete(srcsForTargetsMaps[prevSrcIdx], dstIdx)
+						srcs[prevIdx].count--
+					}
 				}
-				targetsForSrcsMaps[dstIdx] = make(map[int]bool)
 
-				targetVal -= srcs[srcIdx].val
-				srcs[srcIdx].count++
+				targetVal -= srcs[idx].val
+				srcs[idx].count++
+				srcIdx := srcs[idx].idx
 				srcsForTargetsMaps[srcIdx][dstIdx] = true
-				targetsForSrcsMaps[dstIdx][srcIdx] = true
 			}
 		}
 		if targetVal > 0 {
