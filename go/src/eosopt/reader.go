@@ -113,9 +113,6 @@ func (c Case) FindSolution() (solution Solution, err error) {
 			srcsForTargetsMaps[srcIdx][dstIdx] = true
 			targetVal -= srcs[idx].val
 			srcs[idx].count++
-			/*if dstIdx == 1 {
-				fmt.Printf("xyz: dstIdx:%d srcIdx:%d targetVal:%d\n", dstIdx, srcIdx, targetVal)
-			}*/
 		}
 		if targetVal > 0 {
 			// Try to find bigger target
@@ -142,7 +139,6 @@ func (c Case) FindSolution() (solution Solution, err error) {
 		if targetVal > 0 {
 			solutionExists = false
 		}
-		//		fmt.Printf("xyz: targetVal:%d; solutinExists:%v\n", targetVal, solutionExists)
 	}
 
 	solution.SolutionExists = solutionExists
