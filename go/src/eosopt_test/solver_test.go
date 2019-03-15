@@ -33,27 +33,61 @@ func TestReader(t *testing.T) {
 	}
 }
 func TestSolver(t *testing.T) {
-	c := eosopt.Case{
-		SrcAccounts: []int{10000, 20000, 30000},
-		DstAccounts: []int{10000, 50000, 20000, 30000, 60000},
+	type caseAndSolution struct {
+		c eosopt.Case
+		s eosopt.Solution
 	}
-
-	if solution, err := c.FindSolution(); err != nil {
-		t.Errorf("error during looking for the solution: %v\n", err)
-	} else if !reflect.DeepEqual(solution, eosopt.Solution{
-		SolutionExists: true,
-		Votes: [][]int{
-			[]int{
-				0, 4,
+	casesAndSolutions := []caseAndSolution{
+		caseAndSolution{
+			c: eosopt.Case{
+				SrcAccounts: []int{10000, 20000, 30000},
+				DstAccounts: []int{10000, 50000, 20000, 30000, 60000},
 			},
-			[]int{
-				1, 2, 4,
-			},
-			[]int{
-				1, 3, 4,
+			s: eosopt.Solution{
+				SolutionExists: true,
+				Votes: [][]int{
+					[]int{
+						0, 4,
+					},
+					[]int{
+						1, 2, 4,
+					},
+					[]int{
+						1, 3, 4,
+					},
+				},
 			},
 		},
-	}) {
-		t.Errorf("Unexpected solution: %v\n", solution)
+		caseAndSolution{
+			c: eosopt.Case{
+				SrcAccounts: []int{10000, 20000, 30000},
+				DstAccounts: []int{10000, 50000, 20000, 30000, 70000},
+			},
+			s: eosopt.Solution{
+				SolutionExists: false,
+				Votes: [][]int{
+					[]int{
+						0, 4,
+					},
+					[]int{
+						1, 2, 4,
+					},
+					[]int{
+						1, 3, 4,
+					},
+				},
+			},
+		},
+	}
+
+	for _, x := range casesAndSolutions {
+		c := x.c
+		expectedSolution := x.s
+
+		if solution, err := c.FindSolution(); err != nil {
+			t.Errorf("error during looking for the solution: %v\n", err)
+		} else if !reflect.DeepEqual(solution, expectedSolution) {
+			t.Errorf("Unexpected solution: %v\n", solution)
+		}
 	}
 }
