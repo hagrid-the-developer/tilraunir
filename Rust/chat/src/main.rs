@@ -1,3 +1,4 @@
+//extern crate futures;
 extern crate tokio;
 extern crate tokio_codec;
 
@@ -16,13 +17,19 @@ fn main() {
         .for_each(|sock| {
             let framed_sock = tokio_codec::Framed::new(sock, tokio_codec::LinesCodec::new());
             let (tx, rx) = framed_sock.split();
-            let (ch_tx, ch_rx) = tokio::sync::mpsc::channel::<String>(1000);
+            let (ch_tx, ch_rx) = tokio::sync::mpsc::channel::<String>(1_024);
 
 
             tokio::spawn(
                 tx.send_all(
                     ch_rx.map_err(|err|{ std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err)) })
-                ).join(rx.for_each(move |item| {
+                ).then(
+                    |_| Err(())
+                )
+            );
+
+            tokio::spawn(
+                rx.for_each(move |item| {
                   println!("Received message of length: {}", item.len());
                 //ch_tx = ch_tx.send(item).map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err))).wait()?;
                 //let mtx = &mut tx;
@@ -30,7 +37,8 @@ fn main() {
                   Ok(())
                 }).map_err(|err| {
                   eprintln!("IO error {:?}", err)
-                })))
+                })
+            )
 
             //tokio::spawn(tx.send_all(ch_rx.map_err(|err|{ std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err)) })))
             //tokio::spawn(ch_rx.forward(tx).map_err(|err|{ std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err))}));
