@@ -5,3 +5,4 @@ authors = ["Daniel Fiala <freelancer@meave.biz>"]
 
 [dependencies]
 tokio = "0.1.18"
+tokio-codec = "0.1"

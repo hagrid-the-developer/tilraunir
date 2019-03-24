@@ -1,4 +1,5 @@
 extern crate tokio;
+extern crate tokio_codec;
 
 use tokio::prelude::*;
 use tokio::net::TcpListener;
@@ -13,20 +14,46 @@ fn main() {
     let server = listener.incoming()
         .map_err(|e| eprintln!("accept failed = {:?}", e))
         .for_each(|sock| {
+            let framed_sock = tokio_codec::Framed::new(sock, tokio_codec::LinesCodec::new());
+            let (tx, rx) = framed_sock.split();
+            let (ch_tx, ch_rx) = tokio::sync::mpsc::channel::<String>(1000);
+
+
+            tokio::spawn(
+                tx.send_all(
+                    ch_rx.map_err(|err|{ std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err)) })
+                ).join(rx.for_each(move |item| {
+                  println!("Received message of length: {}", item.len());
+                //ch_tx = ch_tx.send(item).map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err))).wait()?;
+                //let mtx = &mut tx;
+                //mtx.send_all(ch_rx.map_err(|err|{ std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err)) }));
+                  Ok(())
+                }).map_err(|err| {
+                  eprintln!("IO error {:?}", err)
+                })))
+
+            //tokio::spawn(tx.send_all(ch_rx.map_err(|err|{ std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err)) })))
+            //tokio::spawn(ch_rx.forward(tx).map_err(|err|{ std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err))}));
             // Split up the reading and writing parts of the
             // socket.
+            /*
             let (reader, writer) = sock.split();
             let r = std::io::BufReader::new(reader);
+            let w = std::io::BufWriter::new(writer);
             // A future that echos the data and returns how
             // many bytes were copied...
             //let bytes_copied = copy(reader, writer);
-
+*/
+            /*
             let handle_read = tokio::io::read_until(r, b'\n', vec![]).and_then(|(_, buf)| {
                 println!("Read {:} bytes", buf.len());
-                return Ok(());
+                tokio::io::write_all(w, format!("Received message of length: {}", buf.len()));
+                Ok(())
             }).map_err(|err| {
                 eprintln!("IO error {:?}", err)
             });
+            */
+            
             /*
             // ... after which we'll print what happened.
             let handle_conn = bytes_copied.map(|amt| {
@@ -37,7 +64,7 @@ fn main() {
             */
 
             // Spawn the future as a concurrent task.
-            tokio::spawn(handle_read)
+            //tokio::spawn(handle_read)
         });
 
     // Start the Tokio runtime
