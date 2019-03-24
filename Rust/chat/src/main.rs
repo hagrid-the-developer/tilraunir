@@ -30,9 +30,12 @@ fn main() {
 
             tokio::spawn(
                 rx.for_each(move |item| {
-                  println!("Received message of length: {}", item.len());
-                  ch_tx.clone().send(item).wait();
-                  Ok(())
+                    println!("Received message of length: {}", item.len());
+                    ch_tx.clone().send(item).map(
+                        |_| ()
+                   ).map_err(|err| {
+                        std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err))
+                   })
                 }).map_err(|err| {
                   eprintln!("IO error {:?}", err)
                 })
