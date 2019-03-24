@@ -1,4 +1,4 @@
-//extern crate futures;
+extern crate futures;
 extern crate tokio;
 extern crate tokio_codec;
 
@@ -17,7 +17,7 @@ fn main() {
         .for_each(|sock| {
             let framed_sock = tokio_codec::Framed::new(sock, tokio_codec::LinesCodec::new());
             let (tx, rx) = framed_sock.split();
-            let (mut ch_tx, ch_rx) = tokio::sync::mpsc::channel::<String>(1_024);
+            let (ch_tx, ch_rx) = futures::sync::mpsc::unbounded::<String>();
 
 
             tokio::spawn(
@@ -31,10 +31,7 @@ fn main() {
             tokio::spawn(
                 rx.for_each(move |item| {
                   println!("Received message of length: {}", item.len());
-                  ch_tx.start_send(item);
-                  /*.and_then(|_| {  //.map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err))).wait()?;
-                      ch_tx.poll_complete()
-                  });*/
+                  ch_tx.clone().send(item).wait();
                   Ok(())
                 }).map_err(|err| {
                   eprintln!("IO error {:?}", err)
