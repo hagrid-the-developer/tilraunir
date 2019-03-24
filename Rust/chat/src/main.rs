@@ -17,7 +17,7 @@ fn main() {
         .for_each(|sock| {
             let framed_sock = tokio_codec::Framed::new(sock, tokio_codec::LinesCodec::new());
             let (tx, rx) = framed_sock.split();
-            let (ch_tx, ch_rx) = tokio::sync::mpsc::channel::<String>(1_024);
+            let (mut ch_tx, ch_rx) = tokio::sync::mpsc::channel::<String>(1_024);
 
 
             tokio::spawn(
@@ -31,9 +31,10 @@ fn main() {
             tokio::spawn(
                 rx.for_each(move |item| {
                   println!("Received message of length: {}", item.len());
-                //ch_tx = ch_tx.send(item).map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err))).wait()?;
-                //let mtx = &mut tx;
-                //mtx.send_all(ch_rx.map_err(|err|{ std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err)) }));
+                  ch_tx.start_send(item);
+                  /*.and_then(|_| {  //.map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err))).wait()?;
+                      ch_tx.poll_complete()
+                  });*/
                   Ok(())
                 }).map_err(|err| {
                   eprintln!("IO error {:?}", err)
