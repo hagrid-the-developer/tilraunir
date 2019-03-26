@@ -2,8 +2,32 @@ extern crate futures;
 extern crate tokio;
 extern crate tokio_codec;
 
+use std::io::BufRead;
 use tokio::prelude::*;
 use tokio::net::TcpListener;
+
+#[derive(Debug)]
+enum Error {
+    Stdin(std::io::Error),
+    Channel(futures::sync::mpsc::SendError<String>),
+}
+
+fn spawn_stdin_stream_unbounded() -> futures::sync::mpsc::UnboundedReceiver<String> {
+    let (channel_sink, channel_stream) = futures::sync::mpsc::unbounded::<String>();
+    let stdin_sink = channel_sink.sink_map_err(Error::Channel);
+
+    std::thread::spawn(move || {
+        let stdin = std::io::stdin();
+        let stdin_lock = stdin.lock();
+        futures::stream::iter(stdin_lock.lines())
+            .map_err(Error::Stdin)
+            .forward(stdin_sink)
+            .wait()
+            .unwrap();
+    });
+
+    channel_stream
+}
 
 fn main() {
     // Bind the server's socket.
@@ -19,13 +43,22 @@ fn main() {
             let (tx, rx) = framed_sock.split();
             let (ch_tx, ch_rx) = futures::sync::mpsc::unbounded::<String>();
 
-
             tokio::spawn(
                 tx.send_all(
                     ch_rx.map_err(|err|{ std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err)) })
                 ).then(
                     |_| Err(())
                 )
+            );
+
+            tokio::spawn(
+                ch_tx.clone().sink_map_err(|_|())
+                .send_all(
+                    spawn_stdin_stream_unbounded().map_err(|_|())//.map_err(|err|{ std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err)) })
+                ).map_err(|_| ())
+                .map(|_| ())
+                /*    |_| Err(())
+                );*/
             );
 
             tokio::spawn(
