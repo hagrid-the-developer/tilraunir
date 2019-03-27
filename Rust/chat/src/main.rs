@@ -57,8 +57,6 @@ fn main() {
                     spawn_stdin_stream_unbounded().map_err(|_|())//.map_err(|err|{ std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err)) })
                 ).map_err(|_| ())
                 .map(|_| ())
-                /*    |_| Err(())
-                );*/
             );
 
             tokio::spawn(
