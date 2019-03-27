@@ -12,22 +12,9 @@ enum Error {
     Channel(futures::sync::mpsc::SendError<String>),
 }
 
-fn spawn_stdin_stream_unbounded() -> futures::sync::mpsc::UnboundedReceiver<String> {
-    let (channel_sink, channel_stream) = futures::sync::mpsc::unbounded::<String>();
-    let stdin_sink = channel_sink.sink_map_err(Error::Channel);
 
-    std::thread::spawn(move || {
-        let stdin = std::io::stdin();
-        let stdin_lock = stdin.lock();
-        futures::stream::iter(stdin_lock.lines())
-            .map_err(Error::Stdin)
-            .forward(stdin_sink)
-            .wait()
-            .unwrap();
-    });
+// FIXME: drf: Don't we use a temporary copy of std::option when assigning None/Stream to it?
 
-    channel_stream
-}
 
 fn main() {
     // Bind the server's socket.
@@ -35,76 +22,80 @@ fn main() {
     let listener = TcpListener::bind(&addr)
         .expect("unable to bind TCP listener");
 
-    // Pull out a stream of sockets for incoming connections
+
+    let receiver = std::sync::Arc::new(std::sync::Mutex::new(None::<futures::sync::mpsc::UnboundedSender<String>>));
+    let recv_srv = std::sync::Arc::clone(&receiver);
+    let recv_close = std::sync::Arc::clone(&receiver);
+
+    std::thread::spawn(move || {
+        let stdin = std::io::stdin();
+        let stdin_lock = stdin.lock();
+        futures::stream::iter(stdin_lock.lines())
+            .map_err(Error::Stdin)
+            .for_each(|line| {
+                let recv_sink_opt = receiver.lock().unwrap();
+                match recv_sink_opt.as_ref() {
+                    None => {
+                        eprintln!("Message will be skipped :-(");
+                        Ok(())
+                    }
+                    Some(recv_sink) => {
+                        recv_sink.clone().send(line).map(
+                            |_| ()
+                        ).map_err(|err| {
+                            std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err))
+                        }).wait().unwrap();
+                        Ok(())
+                    }
+                }
+            })
+            .wait()
+            .unwrap();
+    });
+
     let server = listener.incoming()
         .map_err(|e| eprintln!("accept failed = {:?}", e))
-        .for_each(|sock| {
-            let framed_sock = tokio_codec::Framed::new(sock, tokio_codec::LinesCodec::new());
-            let (tx, rx) = framed_sock.split();
-            let (ch_tx, ch_rx) = futures::sync::mpsc::unbounded::<String>();
+        .for_each(move |sock| {
+            let mut tx_opt = recv_srv.lock().unwrap();
+            match *tx_opt {
+                Some(_) => {
+                    eprintln!("Another client already connected!");
+                },
+                None => {
+                    let framed_sock = tokio_codec::Framed::new(sock, tokio_codec::LinesCodec::new());
+                    let (tx, rx) = framed_sock.split();
+                    let (ch_tx, ch_rx) = futures::sync::mpsc::unbounded::<String>();
 
-            tokio::spawn(
-                tx.send_all(
-                    ch_rx.map_err(|err|{ std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err)) })
-                ).then(
-                    |_| Err(())
-                )
-            );
+                    *tx_opt = Some(ch_tx.clone());
 
-            tokio::spawn(
-                ch_tx.clone().sink_map_err(|_|())
-                .send_all(
-                    spawn_stdin_stream_unbounded().map_err(|_|())//.map_err(|err|{ std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err)) })
-                ).map_err(|_| ())
-                .map(|_| ())
-            );
+                    tokio::spawn(
+                        tx.send_all(
+                            ch_rx.map_err(|err|{ std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err)) })
+                        ).then(
+                            |_| Err(())
+                        )
+                    );
 
-            tokio::spawn(
-                rx.for_each(move |item| {
-                    println!("Received message of length: {}", item.len());
-                    ch_tx.clone().send(item).map(
-                        |_| ()
-                   ).map_err(|err| {
-                        std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err))
-                   })
-                }).map_err(|err| {
-                  eprintln!("IO error {:?}", err)
-                })
-            )
-
-            //tokio::spawn(tx.send_all(ch_rx.map_err(|err|{ std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err)) })))
-            //tokio::spawn(ch_rx.forward(tx).map_err(|err|{ std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err))}));
-            // Split up the reading and writing parts of the
-            // socket.
-            /*
-            let (reader, writer) = sock.split();
-            let r = std::io::BufReader::new(reader);
-            let w = std::io::BufWriter::new(writer);
-            // A future that echos the data and returns how
-            // many bytes were copied...
-            //let bytes_copied = copy(reader, writer);
-*/
-            /*
-            let handle_read = tokio::io::read_until(r, b'\n', vec![]).and_then(|(_, buf)| {
-                println!("Read {:} bytes", buf.len());
-                tokio::io::write_all(w, format!("Received message of length: {}", buf.len()));
-                Ok(())
-            }).map_err(|err| {
-                eprintln!("IO error {:?}", err)
-            });
-            */
-            
-            /*
-            // ... after which we'll print what happened.
-            let handle_conn = bytes_copied.map(|amt| {
-                println!("wrote {:} bytes", amt.0)
-            }).map_err(|err| {
-                eprintln!("IO error {:?}", err)
-            });
-            */
-
-            // Spawn the future as a concurrent task.
-            //tokio::spawn(handle_read)
+                    let mtx = recv_close.clone();
+                    tokio::spawn(
+                        rx.for_each(move |item| {
+                            println!("Received message of length: {}", item.len());
+                            ch_tx.clone().send(item).map(
+                                |_| ()
+                            ).map_err(|err| {
+                                std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err))
+                            })
+                        }).map(move |res| {
+                            let mut tx_guard = mtx.lock().unwrap();
+                            *tx_guard = None;
+                            res
+                        }).map_err(|err| {
+                            eprintln!("IO error {:?}", err)
+                        })
+                    );
+                }
+            };
+            Ok(())
         });
 
     // Start the Tokio runtime
