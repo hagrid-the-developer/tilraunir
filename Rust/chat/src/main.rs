@@ -2,6 +2,7 @@
 mod cmd_line_args;
 
 extern crate futures;
+extern crate resolve;
 extern crate tokio;
 extern crate tokio_codec;
 extern crate tokio_core;
@@ -103,7 +104,8 @@ fn main() {
         Ok(a) => a,
     };
 
-    let addr = args.addr;
+    // FIXME: drf: Try to connect/bind to more addresses.
+    let addr = args.addrs[0];
 
     if args.role == cmd_line_args::Role::Server {
         let listener = TcpListener::bind(&addr).expect("unable to bind TCP listener");

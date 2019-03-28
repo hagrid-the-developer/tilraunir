@@ -1,6 +1,8 @@
 use std::env::args;
 use std::net::SocketAddr;
+use std::net::ToSocketAddrs;
 use std::result::Result;
+use resolve::resolve_host;
 
 #[derive(PartialEq, Eq)]
 pub enum Role {
@@ -10,7 +12,7 @@ pub enum Role {
 
 pub struct ParsedArgs {
     pub role: Role,
-    pub addr: SocketAddr,
+    pub addrs: Vec<SocketAddr>,
 }
 
 pub fn parse() -> Result<ParsedArgs, &'static str> {
@@ -19,18 +21,22 @@ pub fn parse() -> Result<ParsedArgs, &'static str> {
         return Err("Expected two cmd-line arguments: <client|server> <address>");
     }
 
-    let role = if args[1] == "client" {
+    let role = if args[0] == "client" {
         Role::Client
-    } else if args[1] == "server" {
+    } else if args[0] == "server" {
         Role::Server
     } else {
         return Err("Unknown role");
     };
 
-    let ip_addr = match args[2].parse() {
-        Ok(a) => a,
-        Err(_) => return Err("Cannot parse address.")
+    let ip_addrs: Vec<_> = match args[1].to_socket_addrs() {
+        Ok(a) => a.collect(),
+        Err(_) => return Err("Cannot parse host/address")
     };
 
-    return Ok(ParsedArgs{role: role, addr: ip_addr});
+    if ip_addrs.len() == 0 {
+        return Err("Empty list of addresses");
+    }
+
+    return Ok(ParsedArgs{role: role, addrs: ip_addrs});
 }
