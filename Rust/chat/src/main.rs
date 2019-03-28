@@ -1,10 +1,16 @@
+// FIXME: drf: This is only a quic fix to make the function parse visible
+mod cmd_line_args;
+
 extern crate futures;
 extern crate tokio;
 extern crate tokio_codec;
+extern crate tokio_core;
 
 use std::io::BufRead;
 use tokio::prelude::*;
 use tokio::net::TcpListener;
+use tokio::net::TcpStream;
+use tokio_core::reactor::Core;
 
 #[derive(Debug)]
 enum Error {
@@ -12,16 +18,9 @@ enum Error {
     Channel(futures::sync::mpsc::SendError<String>),
 }
 
-
 // FIXME: drf: Don't we use a temporary copy of std::option when assigning None/Stream to it?
 
-
 fn main() {
-    // Bind the server's socket.
-    let addr = "127.0.0.1:12345".parse().unwrap();
-    let listener = TcpListener::bind(&addr)
-        .expect("unable to bind TCP listener");
-
 
     let receiver = std::sync::Arc::new(std::sync::Mutex::new(None::<futures::sync::mpsc::UnboundedSender<String>>));
     let recv_srv = std::sync::Arc::clone(&receiver);
@@ -96,12 +95,37 @@ fn main() {
         Ok(())
     };
 
-    let server = listener.incoming()
-        .map_err(|e| eprintln!("accept failed = {:?}", e))
-        .for_each(move |sock| {
-            handle_sock_fn(sock)
-        });
+    let args = match cmd_line_args::parse() {
+        Err(e) => panic!("Cannot parse cmd-line: {:?}", e),
+        Ok(a) => a,
+    };
 
-    // Start the Tokio runtime
-    tokio::run(server);
+    let addr = args.addr;
+
+    if args.role == cmd_line_args::Role::Server {
+        let listener = TcpListener::bind(&addr)
+            .expect("unable to bind TCP listener");
+
+        let server = listener.incoming()
+            .map_err(|e| eprintln!("accept failed = {:?}", e))
+            .for_each(move |sock| {
+                handle_sock_fn(sock)
+            });
+
+        // Start the Tokio runtime
+        tokio::run(server);
+    } else {
+        // https://stackoverflow.com/questions/51381363/how-can-i-send-a-stream-of-data-using-tokios-tcpstream
+        // https://stackoverflow.com/questions/46836933/how-can-i-read-from-a-tokio-tcp-connection-without-using-the-tokio-proto-crate
+        //let mut core = Core::net().unwrap();
+        let connection = tokio::net::TcpStream::connect(&addr);
+        let client = connection
+            .map_err(|e| eprintln!("accept failed = {:?}", e))
+            .and_then(move |tcp_stream| {
+                handle_sock_fn(tcp_stream)
+            });
+
+        // Start the Tokio runtime
+        tokio::run(client);
+    };
 }
