@@ -15,7 +15,7 @@ pub struct ParsedArgs {
 
 pub fn parse() -> Result<ParsedArgs, &'static str> {
     let args: Vec<_> = args().skip(1).collect();
-    if args.len() != 3 {
+    if args.len() != 2 {
         return Err("Expected two cmd-line arguments: <client|server> <address>");
     }
 

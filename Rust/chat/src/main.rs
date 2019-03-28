@@ -7,10 +7,8 @@ extern crate tokio_codec;
 extern crate tokio_core;
 
 use std::io::BufRead;
-use tokio::prelude::*;
 use tokio::net::TcpListener;
-use tokio::net::TcpStream;
-use tokio_core::reactor::Core;
+use tokio::prelude::*;
 
 #[derive(Debug)]
 enum Error {
@@ -18,11 +16,10 @@ enum Error {
     Channel(futures::sync::mpsc::SendError<String>),
 }
 
-// FIXME: drf: Don't we use a temporary copy of std::option when assigning None/Stream to it?
-
 fn main() {
-
-    let receiver = std::sync::Arc::new(std::sync::Mutex::new(None::<futures::sync::mpsc::UnboundedSender<String>>));
+    let receiver = std::sync::Arc::new(std::sync::Mutex::new(
+        None::<futures::sync::mpsc::UnboundedSender<String>>,
+    ));
     let recv_srv = std::sync::Arc::clone(&receiver);
     let recv_close = std::sync::Arc::clone(&receiver);
 
@@ -39,11 +36,15 @@ fn main() {
                         Ok(())
                     }
                     Some(recv_sink) => {
-                        recv_sink.clone().send(line).map(
-                            |_| ()
-                        ).map_err(|err| {
-                            std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err))
-                        }).wait().unwrap();
+                        recv_sink
+                            .clone()
+                            .send(line)
+                            .map(|_| ())
+                            .map_err(|err| {
+                                std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err))
+                            })
+                            .wait()
+                            .unwrap();
                         Ok(())
                     }
                 }
@@ -57,7 +58,7 @@ fn main() {
         match *tx_opt {
             Some(_) => {
                 eprintln!("Another client already connected!");
-            },
+            }
             None => {
                 let framed_sock = tokio_codec::Framed::new(sock, tokio_codec::LinesCodec::new());
                 let (tx, rx) = framed_sock.split();
@@ -66,29 +67,31 @@ fn main() {
                 *tx_opt = Some(ch_tx.clone());
 
                 tokio::spawn(
-                    tx.send_all(
-                        ch_rx.map_err(|err|{ std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err)) })
-                    ).then(
-                        |_| Err(())
-                    )
+                    tx.send_all(ch_rx.map_err(|err| {
+                        std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err))
+                    })).then(|_| Err(())),
                 );
 
                 let mtx = recv_close.clone();
                 tokio::spawn(
                     rx.for_each(move |item| {
                         println!("Received message of length: {}", item.len());
-                        ch_tx.clone().send(item).map(
-                            |_| ()
-                        ).map_err(|err| {
-                            std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err))
-                        })
+                        println!("Received message: {}", item);
+                        let first = if item.len() > 0 { item.as_bytes()[0] } else { 0 };
+                        // FIXME: drf: Return future, don't wait. Since we are sending to unbound channel, it probably doesn't make so big difference.
+                        if first != b'!' {
+                        } else {
+                            ch_tx.clone().send(format!("!Message of length: {:?}", item.len())).map(|_| ()).map_err(|err| {
+                                std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err));
+                            }).wait().unwrap();
+                        }
+                        Ok(())
                     }).map(move |res| {
-                        let mut tx_guard = mtx.lock().unwrap();
-                        *tx_guard = None;
-                        res
-                    }).map_err(|err| {
-                        eprintln!("IO error {:?}", err)
-                    })
+                            let mut tx_guard = mtx.lock().unwrap();
+                            *tx_guard = None;
+                            res
+                        })
+                        .map_err(|err| eprintln!("IO error {:?}", err)),
                 );
             }
         };
@@ -103,14 +106,12 @@ fn main() {
     let addr = args.addr;
 
     if args.role == cmd_line_args::Role::Server {
-        let listener = TcpListener::bind(&addr)
-            .expect("unable to bind TCP listener");
+        let listener = TcpListener::bind(&addr).expect("unable to bind TCP listener");
 
-        let server = listener.incoming()
+        let server = listener
+            .incoming()
             .map_err(|e| eprintln!("accept failed = {:?}", e))
-            .for_each(move |sock| {
-                handle_sock_fn(sock)
-            });
+            .for_each(move |sock| handle_sock_fn(sock));
 
         // Start the Tokio runtime
         tokio::run(server);
@@ -121,9 +122,7 @@ fn main() {
         let connection = tokio::net::TcpStream::connect(&addr);
         let client = connection
             .map_err(|e| eprintln!("accept failed = {:?}", e))
-            .and_then(move |tcp_stream| {
-                handle_sock_fn(tcp_stream)
-            });
+            .and_then(move |tcp_stream| handle_sock_fn(tcp_stream));
 
         // Start the Tokio runtime
         tokio::run(client);
