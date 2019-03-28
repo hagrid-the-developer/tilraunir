@@ -53,49 +53,53 @@ fn main() {
             .unwrap();
     });
 
+    let handle_sock_fn = move |sock| {
+        let mut tx_opt = recv_srv.lock().unwrap();
+        match *tx_opt {
+            Some(_) => {
+                eprintln!("Another client already connected!");
+            },
+            None => {
+                let framed_sock = tokio_codec::Framed::new(sock, tokio_codec::LinesCodec::new());
+                let (tx, rx) = framed_sock.split();
+                let (ch_tx, ch_rx) = futures::sync::mpsc::unbounded::<String>();
+
+                *tx_opt = Some(ch_tx.clone());
+
+                tokio::spawn(
+                    tx.send_all(
+                        ch_rx.map_err(|err|{ std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err)) })
+                    ).then(
+                        |_| Err(())
+                    )
+                );
+
+                let mtx = recv_close.clone();
+                tokio::spawn(
+                    rx.for_each(move |item| {
+                        println!("Received message of length: {}", item.len());
+                        ch_tx.clone().send(item).map(
+                            |_| ()
+                        ).map_err(|err| {
+                            std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err))
+                        })
+                    }).map(move |res| {
+                        let mut tx_guard = mtx.lock().unwrap();
+                        *tx_guard = None;
+                        res
+                    }).map_err(|err| {
+                        eprintln!("IO error {:?}", err)
+                    })
+                );
+            }
+        };
+        Ok(())
+    };
+
     let server = listener.incoming()
         .map_err(|e| eprintln!("accept failed = {:?}", e))
         .for_each(move |sock| {
-            let mut tx_opt = recv_srv.lock().unwrap();
-            match *tx_opt {
-                Some(_) => {
-                    eprintln!("Another client already connected!");
-                },
-                None => {
-                    let framed_sock = tokio_codec::Framed::new(sock, tokio_codec::LinesCodec::new());
-                    let (tx, rx) = framed_sock.split();
-                    let (ch_tx, ch_rx) = futures::sync::mpsc::unbounded::<String>();
-
-                    *tx_opt = Some(ch_tx.clone());
-
-                    tokio::spawn(
-                        tx.send_all(
-                            ch_rx.map_err(|err|{ std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err)) })
-                        ).then(
-                            |_| Err(())
-                        )
-                    );
-
-                    let mtx = recv_close.clone();
-                    tokio::spawn(
-                        rx.for_each(move |item| {
-                            println!("Received message of length: {}", item.len());
-                            ch_tx.clone().send(item).map(
-                                |_| ()
-                            ).map_err(|err| {
-                                std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err))
-                            })
-                        }).map(move |res| {
-                            let mut tx_guard = mtx.lock().unwrap();
-                            *tx_guard = None;
-                            res
-                        }).map_err(|err| {
-                            eprintln!("IO error {:?}", err)
-                        })
-                    );
-                }
-            };
-            Ok(())
+            handle_sock_fn(sock)
         });
 
     // Start the Tokio runtime
