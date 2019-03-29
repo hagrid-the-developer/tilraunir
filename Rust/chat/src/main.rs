@@ -80,17 +80,18 @@ fn main() {
                         let first = if item.len() > 0 { item.as_bytes()[0] } else { 0 };
                         // FIXME: drf: Return future, don't wait. Since we are sending to unbound channel, it probably doesn't make so big difference.
                         if first != b'!' {
-                            ch_tx.clone().send(format!("!Message of length: {:?}", item.len())).map(|_| ()).map_err(|err| {
-                                std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err));
-                            }).wait().unwrap();
+                            futures::future::Either::A(ch_tx.clone().send(format!("!Message of length: {:?}", item.len())).map(|_| ()).map_err(|err| {
+                                std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err))
+                            }))
+                        } else {
+                            futures::future::Either::B(futures::future::ok(()))
                         }
-                        Ok(())
                     }).map(move |res| {
                             let mut tx_guard = mtx.lock().unwrap();
                             *tx_guard = None;
                             res
-                        })
-                        .map_err(|err| eprintln!("IO error {:?}", err)),
+                    })
+                    .map_err(|err| eprintln!("IO error {:?}", err))
                 );
             }
         };
@@ -118,9 +119,6 @@ fn main() {
         // Start the Tokio runtime
         tokio::run(server);
     } else {
-        // https://stackoverflow.com/questions/51381363/how-can-i-send-a-stream-of-data-using-tokios-tcpstream
-        // https://stackoverflow.com/questions/46836933/how-can-i-read-from-a-tokio-tcp-connection-without-using-the-tokio-proto-crate
-        //let mut core = Core::net().unwrap();
         let connection = tokio::net::TcpStream::connect(&addr);
         let client = connection
             .map_err(|e| eprintln!("accept failed = {:?}", e))
