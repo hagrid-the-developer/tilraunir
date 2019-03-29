@@ -76,12 +76,10 @@ fn main() {
                 let mtx = recv_close.clone();
                 tokio::spawn(
                     rx.for_each(move |item| {
-                        println!("Received message of length: {}", item.len());
                         println!("Received message: {}", item);
                         let first = if item.len() > 0 { item.as_bytes()[0] } else { 0 };
                         // FIXME: drf: Return future, don't wait. Since we are sending to unbound channel, it probably doesn't make so big difference.
                         if first != b'!' {
-                        } else {
                             ch_tx.clone().send(format!("!Message of length: {:?}", item.len())).map(|_| ()).map_err(|err| {
                                 std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err));
                             }).wait().unwrap();
