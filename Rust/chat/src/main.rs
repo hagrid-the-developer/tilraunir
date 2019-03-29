@@ -14,9 +14,9 @@ use tokio::prelude::*;
 #[derive(Debug)]
 enum Error {
     Stdin(std::io::Error),
-    Channel(futures::sync::mpsc::SendError<String>),
 }
 
+// FIXME: drf: Use binary protocol instead of utf-8 based text stream.
 fn main() {
     let receiver = std::sync::Arc::new(std::sync::Mutex::new(
         None::<futures::sync::mpsc::UnboundedSender<String>>,
@@ -104,7 +104,9 @@ fn main() {
 
     // FIXME: drf: Try to connect/bind to more addresses.
     let addr = args.addrs[0];
+    println!("Reolved address: {:?}", addr);
 
+    // FIXME: drf: How to connect/bind to multiple addresses.
     if args.role == cmd_line_args::Role::Server {
         let listener = TcpListener::bind(&addr).expect("unable to bind TCP listener");
 
