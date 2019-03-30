@@ -11,9 +11,8 @@ use std::io::BufRead;
 use tokio::net::TcpListener;
 use tokio::prelude::*;
 
-#[derive(Debug)]
-enum Error {
-    Stdin(std::io::Error),
+fn to_stdio_err<E: std::error::Error>(e: &E) -> std::io::Error {
+    std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", e))
 }
 
 // FIXME: drf: Use binary protocol instead of utf-8 based text stream.
@@ -28,7 +27,7 @@ fn main() {
         let stdin = std::io::stdin();
         let stdin_lock = stdin.lock();
         futures::stream::iter(stdin_lock.lines())
-            .map_err(Error::Stdin)
+            //.map_err(|err| to_stdio_err(&err))
             .for_each(|line| {
                 let recv_sink_opt = receiver.lock().unwrap();
                 match recv_sink_opt.as_ref() {
@@ -42,7 +41,7 @@ fn main() {
                             .send(line)
                             .map(|_| ())
                             .map_err(|err| {
-                                std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err))
+                                to_stdio_err(&err)
                             })
                             .wait()
                             .unwrap();
@@ -80,7 +79,7 @@ fn main() {
                         let first = if item.len() > 0 { item.as_bytes()[0] } else { 0 };
                         if first != b'!' {
                             futures::future::Either::A(ch_tx.clone().send(format!("!Message of length: {:?}", item.len())).map(|_| ()).map_err(|err| {
-                                std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err))
+                                to_stdio_err(&err)
                             }))
                         } else {
                             futures::future::Either::B(futures::future::ok(()))
