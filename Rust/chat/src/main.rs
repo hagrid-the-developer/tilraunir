@@ -1,11 +1,10 @@
-// FIXME: drf: This is only a quic fix to make the function parse visible
-mod cmd_line_args;
-
 extern crate futures;
 extern crate resolve;
 extern crate tokio;
 extern crate tokio_codec;
 extern crate tokio_core;
+
+mod cmd_line_args;
 
 use std::io::BufRead;
 use tokio::net::TcpListener;
@@ -16,6 +15,7 @@ fn to_stdio_err<E: std::error::Error>(e: &E) -> std::io::Error {
 }
 
 // FIXME: drf: Use binary protocol instead of utf-8 based text stream.
+// https://docs.rs/tokio/0.1.16/tokio/codec/length_delimited/index.html
 fn main() {
     let receiver = std::sync::Arc::new(std::sync::Mutex::new(
         None::<futures::sync::mpsc::UnboundedSender<String>>,
