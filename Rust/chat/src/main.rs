@@ -12,6 +12,21 @@ use std::io::BufRead;
 use tokio::net::TcpListener;
 use tokio::prelude::*;
 
+/* Very simple binary protocol is used (it has already some support in Rust):
+ *  4 bytes: message length
+ *  1byte: message type: 'M' -- message, '!' -- acknowledgment
+ *
+ * Better protocol: Often, one byte is enough for both message type and message length:
+ *   1bit: message type
+ *   7 bits: 0 .. 123 -- message length
+ *           124 -- message length is stored in a next byte
+ *           125 -- message length is stored in next two bytes
+ *           126 -- message length is stored in next three bytes
+ *           127 -- message length is stored in next four bytes
+ */
+
+
+
 fn to_stdio_err<E: std::error::Error>(e: &E) -> std::io::Error {
     std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", e))
 }
@@ -31,8 +46,7 @@ fn print_message(msg: Bytes) {
     }
 }
 
-// FIXME: drf: Use binary protocol instead of utf-8 based text stream.
-// https://docs.rs/tokio/0.1.16/tokio/codec/length_delimited/index.html
+// FIXME: drf: It seems that send sometimes aborts.
 fn main() {
     let receiver = std::sync::Arc::new(std::sync::Mutex::new(
         None::<futures::sync::mpsc::UnboundedSender<Bytes>>,
