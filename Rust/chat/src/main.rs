@@ -1,3 +1,4 @@
+extern crate bytes;
 extern crate futures;
 extern crate resolve;
 extern crate tokio;
@@ -6,6 +7,7 @@ extern crate tokio_core;
 
 mod cmd_line_args;
 
+use bytes::Bytes;
 use std::io::BufRead;
 use tokio::net::TcpListener;
 use tokio::prelude::*;
@@ -14,11 +16,26 @@ fn to_stdio_err<E: std::error::Error>(e: &E) -> std::io::Error {
     std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", e))
 }
 
+fn string_to_message(s: String, t: u8) -> Bytes {
+    let mut ret = Bytes::with_capacity(1 + s.len());
+    let t_arr: [u8; 1] = [t; 1];
+    ret.extend_from_slice(&t_arr);
+    ret.extend_from_slice(&s.into_bytes());
+    return ret;
+}
+
+fn print_message(msg: Bytes) {
+    match String::from_utf8(msg.to_vec()) {
+        Ok(s) => println!("Text message: {}", s),
+        Err(_) => println!("Binary message: {:?}", msg),
+    }
+}
+
 // FIXME: drf: Use binary protocol instead of utf-8 based text stream.
 // https://docs.rs/tokio/0.1.16/tokio/codec/length_delimited/index.html
 fn main() {
     let receiver = std::sync::Arc::new(std::sync::Mutex::new(
-        None::<futures::sync::mpsc::UnboundedSender<String>>,
+        None::<futures::sync::mpsc::UnboundedSender<Bytes>>,
     ));
     let recv_srv = std::sync::Arc::clone(&receiver);
     let recv_close = std::sync::Arc::clone(&receiver);
@@ -27,7 +44,6 @@ fn main() {
         let stdin = std::io::stdin();
         let stdin_lock = stdin.lock();
         futures::stream::iter(stdin_lock.lines())
-            //.map_err(|err| to_stdio_err(&err))
             .for_each(|line| {
                 let recv_sink_opt = receiver.lock().unwrap();
                 match recv_sink_opt.as_ref() {
@@ -38,11 +54,9 @@ fn main() {
                     Some(recv_sink) => {
                         recv_sink
                             .clone()
-                            .send(line)
+                            .send(string_to_message(line, b'M'))
                             .map(|_| ())
-                            .map_err(|err| {
-                                to_stdio_err(&err)
-                            })
+                            .map_err(|err| to_stdio_err(&err))
                             .wait()
                             .unwrap();
                         Ok(())
@@ -60,36 +74,45 @@ fn main() {
                 eprintln!("Another client already connected!");
             }
             None => {
-                let framed_sock = tokio_codec::Framed::new(sock, tokio_codec::LinesCodec::new());
+                let framed_sock = tokio_codec::Framed::new(
+                    sock,
+                    tokio::codec::length_delimited::LengthDelimitedCodec::new(),
+                );
                 let (tx, rx) = framed_sock.split();
-                let (ch_tx, ch_rx) = futures::sync::mpsc::unbounded::<String>();
+                let (ch_tx, ch_rx) = futures::sync::mpsc::unbounded::<Bytes>();
 
                 *tx_opt = Some(ch_tx.clone());
 
                 tokio::spawn(
                     tx.send_all(ch_rx.map_err(|err| {
-                        std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err))
-                    })).then(|_| Err(())),
+                         std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err))
+                    })).then(|_| Err(()))
                 );
 
                 let mtx = recv_close.clone();
                 tokio::spawn(
-                    rx.for_each(move |item| {
-                        println!("Received message: {}", item);
-                        let first = if item.len() > 0 { item.as_bytes()[0] } else { 0 };
-                        if first != b'!' {
-                            futures::future::Either::A(ch_tx.clone().send(format!("!Message of length: {:?}", item.len())).map(|_| ()).map_err(|err| {
-                                to_stdio_err(&err)
-                            }))
+                    rx.for_each(move |item_mut| {
+                        let item = item_mut.freeze();
+                        let first = if item.len() > 0 { item[0] } else { 0 };
+                        print_message(item.slice_from(0));
+                        if first == b'M' {
+                            futures::future::Either::A(
+                                ch_tx
+                                    .clone()
+                                    .send(string_to_message(format!("Message of length: {:?}", item.len() - 1), b'!'))
+                                    .map(|_| ())
+                                    .map_err(|err| to_stdio_err(&err)),
+                            )
                         } else {
                             futures::future::Either::B(futures::future::ok(()))
                         }
-                    }).map(move |res| {
-                            let mut tx_guard = mtx.lock().unwrap();
-                            *tx_guard = None;
-                            res
                     })
-                    .map_err(|err| eprintln!("IO error {:?}", err))
+                    .map(move |res| {
+                        let mut tx_guard = mtx.lock().unwrap();
+                        *tx_guard = None;
+                        res
+                    })
+                    .map_err(|err| eprintln!("IO error {:?}", err)),
                 );
             }
         };
