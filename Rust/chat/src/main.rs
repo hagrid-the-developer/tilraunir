@@ -8,6 +8,8 @@ extern crate tokio_core;
 mod cmd_line_args;
 
 use bytes::Bytes;
+use std::error::Error;
+use std::fmt;
 use std::io::BufRead;
 use tokio::net::TcpListener;
 use tokio::prelude::*;
@@ -25,7 +27,43 @@ use tokio::prelude::*;
  *           127 -- message length is stored in next four bytes
  */
 
+/*
+ * RTT:
+ *  - https://stackoverflow.com/questions/26593387/how-can-i-get-the-current-time-in-milliseconds
+ *  - https://stackoverflow.com/questions/29445026/converting-number-primitives-i32-f64-etc-to-byte-representations
+ */
 
+/*
+#[derive(Debug)]
+enum MessageType {
+    Message,
+    Acknowledgment,
+}
+
+struct Message {
+    t: MessageType,
+    time_beg: u64,
+    content: String,
+}
+
+#[derive(Debug)]
+struct MessageError {}
+impl Error for MessageError {}
+
+impl fmt::Display for MessageError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Message error")
+    }
+}
+
+fn encodeMessage(s: String, t: u8, time: u64) -> Result<Bytes, MessageError> {
+
+}
+
+fn decodeMessage(b: Bytes) -> Result<Message, MessageError> {
+
+}
+*/
 
 fn to_stdio_err<E: std::error::Error>(e: &E) -> std::io::Error {
     std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", e))
@@ -99,8 +137,8 @@ fn main() {
 
                 tokio::spawn(
                     tx.send_all(ch_rx.map_err(|err| {
-                         std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err))
-                    })).then(|_| Err(()))
+                        std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err))
+                    })).then(|_| Err(())),
                 );
 
                 let mtx = recv_close.clone();
@@ -113,20 +151,22 @@ fn main() {
                             futures::future::Either::A(
                                 ch_tx
                                     .clone()
-                                    .send(string_to_message(format!("Message of length: {:?}", item.len() - 1), b'!'))
+                                    .send(string_to_message(
+                                        format!("Message of length: {:?}", item.len() - 1),
+                                        b'!',
+                                    ))
                                     .map(|_| ())
                                     .map_err(|err| to_stdio_err(&err)),
                             )
                         } else {
                             futures::future::Either::B(futures::future::ok(()))
                         }
-                    })
-                    .map(move |res| {
-                        let mut tx_guard = mtx.lock().unwrap();
-                        *tx_guard = None;
-                        res
-                    })
-                    .map_err(|err| eprintln!("IO error {:?}", err)),
+                    }).map(move |res| {
+                            let mut tx_guard = mtx.lock().unwrap();
+                            *tx_guard = None;
+                            res
+                        })
+                        .map_err(|err| eprintln!("IO error {:?}", err)),
                 );
             }
         };
