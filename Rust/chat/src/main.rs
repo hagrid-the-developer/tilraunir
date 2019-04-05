@@ -181,9 +181,9 @@ fn main() {
                 *tx_opt = Some(ch_tx.clone());
 
                 tokio::spawn(
-                    tx.send_all(ch_rx.map_err(|err| {
-                        std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err))
-                    })).then(|_| Err(())),
+                    tx.send_all(ch_rx.map_err(|_| { // Error == ()
+                        std::io::ErrorKind::Other
+                    })).then(|_| Ok(())),
                 );
 
                 let mtx = recv_close.clone();
