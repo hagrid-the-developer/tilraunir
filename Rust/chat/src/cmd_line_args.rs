@@ -2,7 +2,6 @@ use std::env::args;
 use std::net::SocketAddr;
 use std::net::ToSocketAddrs;
 use std::result::Result;
-use resolve::resolve_host;
 
 #[derive(PartialEq, Eq)]
 pub enum Role {

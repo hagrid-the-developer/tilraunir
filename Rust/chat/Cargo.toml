@@ -4,7 +4,9 @@ version = "0.1.0"
 authors = ["Daniel Fiala <freelancer@meave.biz>"]
 
 [dependencies]
+byteorder = "1.3.1"
 bytes = "0.4.12"
+chrono = "0.4"
 tokio = "0.1.18"
 tokio-codec = "0.1"
 tokio-core = "0.1"

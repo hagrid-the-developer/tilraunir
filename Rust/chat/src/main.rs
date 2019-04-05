@@ -1,4 +1,6 @@
+extern crate byteorder;
 extern crate bytes;
+extern crate chrono;
 extern crate futures;
 extern crate resolve;
 extern crate tokio;
@@ -7,7 +9,9 @@ extern crate tokio_core;
 
 mod cmd_line_args;
 
+use byteorder::{BigEndian, ByteOrder};
 use bytes::Bytes;
+use chrono::prelude::*;
 use std::error::Error;
 use std::fmt;
 use std::io::BufRead;
@@ -32,18 +36,38 @@ use tokio::prelude::*;
  *  - https://stackoverflow.com/questions/26593387/how-can-i-get-the-current-time-in-milliseconds
  *  - https://stackoverflow.com/questions/29445026/converting-number-primitives-i32-f64-etc-to-byte-representations
  */
-
-/*
 #[derive(Debug)]
 enum MessageType {
     Message,
     Acknowledgment,
 }
 
+#[derive(Debug)]
 struct Message {
     t: MessageType,
-    time_beg: u64,
-    content: String,
+    time_beg: i64,
+    content: Bytes,
+}
+
+impl fmt::Display for Message {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let now = Utc::now().timestamp_nanos();
+        let diff = (now - self.time_beg) as f64 / 1_000_000f64;
+
+        // FIXME: drf: Do we allocate additional memory in to_vec()?
+        match String::from_utf8(self.content.to_vec()) {
+            Ok(s) => write!(
+                f,
+                "Text-message: type: {:?}; time-diff: {:.3}millis; content: {}",
+                self.t, diff, s
+            ),
+            Err(_) => write!(
+                f,
+                "Binary-message: type: {:?}; time-diff: {:.3}millis; content: {:?}",
+                self.t, diff, self.content
+            ),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -52,36 +76,53 @@ impl Error for MessageError {}
 
 impl fmt::Display for MessageError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Message error")
+        write!(f, "Cannot decode message")
     }
 }
 
-fn encodeMessage(s: String, t: u8, time: u64) -> Result<Bytes, MessageError> {
+fn encode_message(msg: Message) -> Bytes {
+    // FIXME: drf: Do we use the minimal number of allocations?
+    let mut t_arr = [0u8; 1 + 8];
+    t_arr[0] = match msg.t {
+        MessageType::Acknowledgment => b'!',
+        MessageType::Message => b'M',
+    };
+    let time_beg = if msg.time_beg > 0 {
+        msg.time_beg
+    } else {
+        Utc::now().timestamp_nanos()
+    };
+    BigEndian::write_i64(&mut t_arr[1..9], time_beg);
 
+    let mut ret = Bytes::with_capacity(1 + 8 + msg.content.len());
+    ret.extend_from_slice(&t_arr);
+    ret.extend_from_slice(&msg.content);
+    ret
 }
 
-fn decodeMessage(b: Bytes) -> Result<Message, MessageError> {
+fn decode_message(b: Bytes) -> Result<Message, MessageError> {
+    if b.len() > 1 + 8 {
+        let msg_type = match b[0] {
+            b'M' => MessageType::Message,
+            b'!' => MessageType::Acknowledgment,
+            _ => return Err(MessageError {}),
+        };
 
+        let time_beg = BigEndian::read_i64(&b[1..9]);
+        let content = b.slice_from(9);
+
+        Ok(Message {
+            t: msg_type,
+            time_beg: time_beg,
+            content: content,
+        })
+    } else {
+        Err(MessageError {})
+    }
 }
-*/
 
 fn to_stdio_err<E: std::error::Error>(e: &E) -> std::io::Error {
     std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", e))
-}
-
-fn string_to_message(s: String, t: u8) -> Bytes {
-    let mut ret = Bytes::with_capacity(1 + s.len());
-    let t_arr: [u8; 1] = [t; 1];
-    ret.extend_from_slice(&t_arr);
-    ret.extend_from_slice(&s.into_bytes());
-    return ret;
-}
-
-fn print_message(msg: Bytes) {
-    match String::from_utf8(msg.to_vec()) {
-        Ok(s) => println!("Text message: {}", s),
-        Err(_) => println!("Binary message: {:?}", msg),
-    }
 }
 
 // FIXME: drf: It seems that send sometimes aborts.
@@ -106,7 +147,11 @@ fn main() {
                     Some(recv_sink) => {
                         recv_sink
                             .clone()
-                            .send(string_to_message(line, b'M'))
+                            .send(encode_message(Message {
+                                t: MessageType::Message,
+                                time_beg: 0,
+                                content: Bytes::from(line.into_bytes()),
+                            }))
                             .map(|_| ())
                             .map_err(|err| to_stdio_err(&err))
                             .wait()
@@ -145,21 +190,38 @@ fn main() {
                 tokio::spawn(
                     rx.for_each(move |item_mut| {
                         let item = item_mut.freeze();
-                        let first = if item.len() > 0 { item[0] } else { 0 };
-                        print_message(item.slice_from(0));
-                        if first == b'M' {
-                            futures::future::Either::A(
-                                ch_tx
-                                    .clone()
-                                    .send(string_to_message(
-                                        format!("Message of length: {:?}", item.len() - 1),
-                                        b'!',
-                                    ))
-                                    .map(|_| ())
-                                    .map_err(|err| to_stdio_err(&err)),
-                            )
-                        } else {
-                            futures::future::Either::B(futures::future::ok(()))
+                        match decode_message(item) {
+                            Err(e) => {
+                                eprintln!("Cannot decode incoming message: {}", e);
+                                futures::future::Either::B(futures::future::ok(()))
+                            }
+                            Ok(msg) => {
+                                println!("Incoming msg: {}", msg);
+
+                                match msg.t {
+                                    MessageType::Acknowledgment => {
+                                        futures::future::Either::B(futures::future::ok(()))
+                                    }
+                                    MessageType::Message => {
+                                        // FIXME: drf: How to convert String to Bytes with the minimum number of allocations?
+                                        let content = Bytes::from(
+                                            format!("Message of length: {}", msg.content.len())
+                                                .into_bytes(),
+                                        );
+                                        futures::future::Either::A(
+                                            ch_tx
+                                                .clone()
+                                                .send(encode_message(Message {
+                                                    t: MessageType::Acknowledgment,
+                                                    time_beg: msg.time_beg,
+                                                    content: content,
+                                                }))
+                                                .map(|_| ())
+                                                .map_err(|err| to_stdio_err(&err)),
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }).map(move |res| {
                             let mut tx_guard = mtx.lock().unwrap();
