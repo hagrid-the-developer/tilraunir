@@ -1,0 +1,8 @@
+[package]
+name = "algartam"
+version = "0.1.0"
+authors = ["Daniel Fiala <freelancer@meave.biz>"]
+
+[dependencies]
+num = "0.2.0"
+num-traits = "0.2.0"
