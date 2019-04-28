@@ -1,8 +1,8 @@
 use num::{FromPrimitive, ToPrimitive};
-use num_traits::Num;
-use std::vec::Vec;
+use num_traits::sign::Unsigned;
 
-pub fn slow<T: Num + Clone + Copy + Ord>(x: &[T]) -> T {
+// TODO: FIXME: Handle cases when the result doesn't fit to T.
+pub fn slow<T: Unsigned + Clone + Copy + Ord>(x: &[T]) -> T {
     if x.len() == 0 {
         T::zero()
     } else {
@@ -20,7 +20,9 @@ pub fn slow<T: Num + Clone + Copy + Ord>(x: &[T]) -> T {
     }
 }
 
-pub fn fast<T: Num + FromPrimitive + ToPrimitive + Clone + Copy + Ord>(x: &[T]) -> T {
+// TODO: FIXME: Handle cases when the result doesn't fit to T, use better error handling, not unwrap().
+//   - Check that from_usize(), to_usize() worked or should always work.
+pub fn fast<T: Unsigned + FromPrimitive + ToPrimitive + Clone + Copy + Ord>(x: &[T]) -> T {
     let mut m = vec![false; x.len() + 1];
     let l = T::from_usize(x.len()).unwrap();
     for item in x.iter() {
@@ -32,6 +34,10 @@ pub fn fast<T: Num + FromPrimitive + ToPrimitive + Clone + Copy + Ord>(x: &[T]) 
 }
 
 mod tests {
+    use std::vec::Vec;
+    use rand;
+    use rand::prelude::*;
+    use std::fmt::Debug;
     use super::*;
 
     #[test]
@@ -48,6 +54,22 @@ mod tests {
 
             let v2 = vec![0, 4, 1, 4, 3];
             assert_eq!(func(&v2), 2);
+        }
+    }
+
+    fn run_rnd<T: Unsigned + FromPrimitive + ToPrimitive + Clone + Copy + Ord + Debug>() where rand::distributions::Standard: rand::distributions::Distribution<T> {
+        let len = random::<usize>() % 128_000;
+        let v: Vec<_> = (1..len).into_iter().map(|_| { random::<T>() }).collect();
+        assert_eq!(slow(&v), fast(&v));
+    }
+
+    #[test]
+    fn random_test() {
+        // FIXME: TODO: Make this work for u16, u8, maybe other types?
+        for _ in (0..100) {
+            run_rnd::<u64>();
+            run_rnd::<u32>();
+            run_rnd::<usize>();
         }
     }
 }

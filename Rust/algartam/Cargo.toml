@@ -6,3 +6,4 @@ authors = ["Daniel Fiala <freelancer@meave.biz>"]
 [dependencies]
 num = "0.2.0"
 num-traits = "0.2.0"
+rand = "0.6.5"
