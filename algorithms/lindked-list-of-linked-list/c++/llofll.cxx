@@ -32,6 +32,8 @@ struct LinkedList {
 	{
 		first_ = other.first_;
 		other.first_ = nullptr;
+
+		return *this;
 	}
 
 	bool is_empty() const noexcept {
