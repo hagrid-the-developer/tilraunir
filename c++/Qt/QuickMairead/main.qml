@@ -3,27 +3,25 @@ import QtQuick.Window 2.12
 
 Window {
   visible: true
-  width: 640
-  height: 480
+  width: 200
+  height: 200
   title: qsTr("Hello World")
-
-  Text {
-      id: element
-      x: 159
-      y: 66
-      width: 299
-      height: 39
-      text: qsTr("Everything Works")
-      font.pixelSize: 12
+  Rectangle {
+    anchors.fill: parent
+    color: "white"
   }
-
-  Grid {
-      id: grid
-      x: 89
-      y: 40
-      width: 400
-      height: 400
-      rows: 2
-      columns: 2
+  ListModel {
+    id: data
+    ListElement {c: "red"; w: 100; h: 100 }
+    ListElement {c: "blue"; w: 200; h: 100 }
+    ListElement {c: "green"; w: 100; h: 100 }
+    ListElement {c: "yellow"; w: 200; h: 100 }
+  }
+  Flow {
+    anchors.fill: parent
+    Repeater {
+      model: data
+      delegate: Rectangle {color: c; width: w; height: h; }
+    }
   }
 }
