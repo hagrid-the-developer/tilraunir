@@ -23,11 +23,14 @@ ApplicationWindow {
     }
 
     Connections {
-    }
-
-    Connections {
         target: loginDialog
         onSubmitted: api.reqToken(userName, password)
+    }
+    Connections {
+        target: api
+        onReplyTokenError: {
+            loginDialog.open();
+        }
     }
 }
 
