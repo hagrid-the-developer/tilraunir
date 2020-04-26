@@ -59,14 +59,8 @@ void QuwiApi::onTokenReqFinished(QNetworkReply *reply)
         }
 
         auto const& obj = doc.object();
-        auto const it_token = obj.find(QStringLiteral("token"));
-        if (it_token == obj.end())
-        {
-            throw Error{};
-        }
-
-        token_ = it_token.value().toString();
-        if (token_.isNull())
+        token_ = jget<QString>(obj, "token");
+        if (token_.isEmpty())
         {
             throw Error{};
         }
@@ -112,13 +106,13 @@ void QuwiApi::onProjectsListFinished(QNetworkReply *reply)
         for (auto const &item: it_items->toArray())
         {
             auto const& o = item.toObject();
-            qDebug() << __func__ << "; item: " << o << ";";
             auto const name = jget<QString>(o, "name");
             QUrl const logoUrl = jget<QString>(o, "logo_url");
             auto const id = jget<int>(o, "id");
             auto const position = jget<int>(o, "position");
             auto const isActive = jget<bool>(o, "is_active");
 
+            qDebug() << __func__ << "; item: " << o << ";";
             list.push_back(ProjectItem{name, logoUrl, id, position, isActive});
         }
         emit projectsListFinished(list);
