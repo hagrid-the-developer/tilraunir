@@ -1,5 +1,6 @@
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonArray>
 #include <QMessageLogger>
 #include <QNetworkRequest>
 #include <QNetworkReply>
@@ -14,6 +15,25 @@ namespace
 
 static const auto URL = QStringLiteral("https://api.quwi.com/v2/");
 static const auto URL_AUTH = URL + "auth/login";
+static const auto URL_PROJECTS_LIST = URL + "projects-manage/index";
+
+template <typename T>
+static T jget(QJsonObject const &obj, char const name[])
+{
+    auto const it = obj.find(name);
+    if (obj.end() == it)
+    {
+        throw Error{};
+    }
+
+    auto const& var = it.value().toVariant();
+    if (!var.canConvert<T>())
+    {
+        throw Error{};
+    }
+
+     return var.value<T>();
+}
 
 } /* Anonymous Namespace */
 
@@ -62,6 +82,53 @@ void QuwiApi::onTokenReqFinished(QNetworkReply *reply)
     qDebug() << "token: " << token_;
 }
 
+void QuwiApi::onProjectsListFinished(QNetworkReply *reply)
+{
+    qDebug() << __func__;
+    try
+    {
+        if (reply->error())
+        {
+            qDebug() << __func__ << ": reply->error: " << reply->error();
+            throw Error{};
+        }
+
+        QJsonParseError parser_err;
+        auto const doc = QJsonDocument::fromJson(reply->readAll(), &parser_err);
+        qDebug() << __func__ << ": json: " << doc << ";";
+        if (doc.isNull())
+        {
+            throw Error{};
+        }
+
+        ProjectsList list{};
+
+        auto obj = doc.object();
+        auto it_items = obj.find("projects");
+        if (it_items == obj.end())
+        {
+            throw Error{};
+        }
+        for (auto const &item: it_items->toArray())
+        {
+            auto const& o = item.toObject();
+            qDebug() << __func__ << "; item: " << o << ";";
+            auto const name = jget<QString>(o, "name");
+            QUrl const logoUrl = jget<QString>(o, "logo_url");
+            auto const id = jget<int>(o, "id");
+            auto const position = jget<int>(o, "position");
+            auto const isActive = jget<bool>(o, "is_active");
+
+            list.push_back(ProjectItem{name, logoUrl, id, position, isActive});
+        }
+        emit projectsListFinished(list);
+    }
+    catch (Error const& e)
+    {
+        emit projectsListError(e);
+    }
+}
+
 QuwiApi::QuwiApi(QObject *parent)
     : QObject(parent)
     , net_(this)
@@ -89,7 +156,16 @@ void QuwiApi::reqToken(const QString &email, const QString &password)
     });
 }
 
-void QuwiApi::reqShowProjectsList()
+void QuwiApi::reqProjectsList()
 {
+    qDebug() << __func__;
 
+    QNetworkRequest req{URL_PROJECTS_LIST};
+    req.setRawHeader("Authorization",
+                     (QStringLiteral("Bearer ") + token_).toLatin1());
+    QNetworkReply *reply = net_.get(req);
+    connect(reply, &QNetworkReply::finished, this, [reply, this]
+    {
+        this->onProjectsListFinished(reply);
+    });
 }

@@ -18,20 +18,21 @@ class QuwiApi : public QObject
 
 private slots:
     void onTokenReqFinished(QNetworkReply *reply);
+    void onProjectsListFinished(QNetworkReply *reply);
 
 public:
     explicit QuwiApi(QObject *parent = nullptr);
 
 public slots:
     void reqToken(QString const& email, QString const& password);
-    void reqShowProjectsList();
+    void reqProjectsList();
 
 signals:
     void replyTokenFinished();
     void replyTokenError(Error const&);
 
-    void showProjectsListFinished(ProjectsList const& list);
-    void showProjectsListError(Error const&);
+    void projectsListFinished(ProjectsList const& list);
+    void projectsListError(Error const&);
 
 };
 

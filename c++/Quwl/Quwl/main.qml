@@ -18,8 +18,6 @@ ApplicationWindow {
 
     LoginDialogForm {
         id: loginDialog
-        //x: -1096
-        //y: -388
     }
 
     Connections {

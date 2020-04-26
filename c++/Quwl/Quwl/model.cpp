@@ -9,6 +9,16 @@ Model::Model(QuwiApi *api, QObject *parent)
     connect(api, &QuwiApi::replyTokenError, this, [this] {
         this->setHasToken(false);
     });
+    connect(this, &Model::hasTokenChanged, api, [api](bool const hasToken) {
+        if (hasToken)
+        {
+            api->reqProjectsList();
+        }
+    });
+    connect(api, &QuwiApi::projectsListFinished, this, &Model::setProjects);
+    connect(api, &QuwiApi::projectsListError, this, [this] {
+        this->setProjects(ProjectsList{});
+    });
 }
 
 void Model::setHasToken(const bool hasToken) noexcept

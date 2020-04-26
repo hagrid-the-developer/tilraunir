@@ -22,6 +22,7 @@ public:
     void setHasToken(bool const hasToken) noexcept;
 
 public slots:
+    ProjectsList const& getProjects() const noexcept { return projects_; }
     void setProjects(ProjectsList const& projects);
 
 signals:
