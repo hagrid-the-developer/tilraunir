@@ -6,12 +6,103 @@
 #include <string.h>
 #include <stdbool.h>
 #include <unistd.h>
-#include <netinet/in.h>
 #include <linux/types.h>
+#include <netinet/in.h>
+#include <netinet/ip.h>
+#include <netinet/tcp.h>
 #include <linux/netfilter.h>		/* for NF_ACCEPT */
 #include <errno.h>
 
+#include <libnetfilter_queue/pktbuff.h>
 #include <libnetfilter_queue/libnetfilter_queue.h>
+#include <libnetfilter_queue/libnetfilter_queue_ipv4.h>
+#include <libnetfilter_queue/libnetfilter_queue_tcp.h>
+
+
+static int parse_payload(struct nfq_q_handle *qh, const int id, unsigned char* rawData, const int len)
+{
+  bool is_changed = false;
+
+  struct pkt_buff * pkBuff = pktb_alloc(AF_INET, rawData, len, 0x1000);
+  if (NULL == pkBuff)
+  {
+      fprintf(stderr, "%s:%d Issue while pktb allocate", __FILE__, __LINE__);
+	  goto exit;
+  }
+  
+  struct iphdr *ip = nfq_ip_get_hdr(pkBuff);
+  if (NULL == ip)
+  {
+  	fprintf(stderr, "%s:%d Issue while ipv4 header parse", __FILE__, __LINE__);
+    goto exit;
+  }
+  
+  if (nfq_ip_set_transport_header(pkBuff, ip) < 0)
+  {
+    fprintf (stderr, "%s:%d Can't set transport header", __FILE__, __LINE__);
+    goto exit;
+  }
+      
+  if(ip->protocol == IPPROTO_TCP)
+  {
+    struct tcphdr *tcp = nfq_tcp_get_hdr(pkBuff);
+    if (NULL == tcp)
+	{
+      fprintf(stderr, "%s:%d Issue while tcp header", __FILE__, __LINE__);
+      goto exit;
+	}
+          
+    unsigned char *payload = nfq_tcp_get_payload(tcp, pkBuff);
+    unsigned int payloadLen = nfq_tcp_get_payload_len(tcp, pkBuff);
+    payloadLen -= 4 * tcp->th_off;
+    if (NULL == payload)
+	{
+	  fprintf(stderr, "%s:%d Issue while payload", __FILE__, __LINE__);
+	  goto exit;
+	}
+  
+	for (int i = 0; i < payloadLen; ++i)
+	{
+		const int c = payload[i];
+		if (0x20 <= c && c < 0x7F)
+		{
+			fputc(c, stdout);
+		}
+		else
+		{
+			fprintf(stdout, "\\x%.02d", c);
+		}
+	}
+   	fputc('\n', stdout);
+
+	/* Rewrite packet */
+   	static const char STR_AHOJ[] = "ahoj";
+   	static const char STR_HOLA[] = "hola";
+   	static const size_t LEN = sizeof(STR_AHOJ) - 1;
+   	for (char *p = payload, *end = p + payloadLen, *q = NULL; p < end; p = q + LEN)
+   	{
+   		q = memmem(p, end - p, STR_AHOJ, LEN);
+   		if (!q)
+   			break;
+   		memcpy(q, STR_HOLA, LEN);
+   		is_changed = true;
+   	}
+
+	if (is_changed)
+    	nfq_tcp_compute_checksum_ipv4(tcp, ip);
+  }
+
+exit:
+	{
+		const int ret = is_changed ? nfq_set_verdict(qh, id, NF_ACCEPT, pktb_len(pkBuff), pktb_data(pkBuff))
+		  						   : nfq_set_verdict(qh, id, NF_ACCEPT, 0, NULL);
+
+		if (NULL != pkBuff)
+	        pktb_free(pkBuff); // Don't forget to clean up
+
+		return ret;
+	}
+}
 
 static int cb(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
 	    	  struct nfq_data *nfa, void *_data)
@@ -77,36 +168,7 @@ static int cb(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
 	if (ret >= 0)
 	{
 		printf("payload_len=%d ", ret);
-		for (int i = 0; i < ret; ++i)
-		{
-			const int c = data[i];
-			if (0x20 <= c && c < 0x7F)
-			{
-				fputc(c, stdout);
-			}
-			else
-			{
-				fprintf(stdout, "\\x%.02d", c);
-			}
-		}
-    	fputc('\n', stdout);
-
-		/* Rewrite packet */
-    	static const char STR_AHOJ[] = "ahoj";
-    	static const char STR_HOLA[] = "hola";
-    	static const size_t LEN = sizeof(STR_AHOJ) - 1;
-    	for (char *p = data, *end = p + ret, *q = NULL; p < end; p = q + LEN)
-    	{
-    		q = memmem(p, end - p, STR_AHOJ, LEN);
-    		if (!q)
-    			break;
-    		memcpy(q, STR_HOLA, LEN);
-    		is_changed = true;
-    	}
-	}
-	if (is_changed)
-	{
-		return nfq_set_verdict(qh, id, NF_ACCEPT, ret, data);
+		return parse_payload(qh, id, data, ret);
 	}
 	else
 	{
