@@ -2,6 +2,7 @@ import QtQuick 2.0
 import QtQuick.Controls 2.14
 
 Item {
+    anchors.fill: parent
     Grid {
         id: grid
         rows: 3
@@ -24,24 +25,25 @@ Item {
 
         CheckBox {
             id: chkIsActive
-            text: qsTr("Check Box")
+            enabled: is_active
+            text: qsTr("Is Active")
         }
 
         Text {
             id: txtSpentTimeAll
-            text: qsTr("Text")
+            text: "125"
             font.pixelSize: 12
         }
 
         Text {
             id: txtSpentTimeWeek
-            text: qsTr("Text")
+            text: "23"
             font.pixelSize: 12
         }
 
         Text {
             id: txtUid
-            text: qsTr("Text")
+            text: id
             font.pixelSize: 12
         }
     }

@@ -19,7 +19,7 @@ Model::Model(QuwiApi *api, ProjectsListModel *projectModel, QObject *parent)
     connect(api, &QuwiApi::projectsListError, this, [this] {
         this->setProjects(ProjectsList{});
     });
-    connect(this, &Model::projectsChanged, projectModel, &ProjectsListModel::update);
+    //connect(this, &Model::projectsChanged, projectModel, &ProjectsListModel::update);
 }
 
 void Model::setHasToken(const bool hasToken) noexcept
