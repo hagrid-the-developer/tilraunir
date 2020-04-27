@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <netinet/in.h>
 #include <linux/types.h>
@@ -24,6 +25,7 @@ static int cb(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
 	int ret;
 	unsigned char *data, *secdata;
 	struct nfq_data *tb = nfa;
+	bool is_changed = false;
 
 	ph = nfq_get_msg_packet_hdr(tb);
 	if (ph) {
@@ -87,24 +89,25 @@ static int cb(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
 				fprintf(stdout, "\\x%.02d", c);
 			}
 		}
-	static const char STR_AHOJ[] = "ahoj";
-	static const char STR_HOLA[] = "hola";
-	static const size_t LEN = sizeof(STR_AHOJ) - 1;
-	for (char *p = data, *end = p + ret, *q = NULL; p < end; p = q + LEN)
-	{
-		q = memmem(p, end - p, STR_AHOJ, LEN);
-		if (!q)
-			break;
-		memcpy(q, STR_HOLA, LEN);
-	}
 
-	fputc('\n', stdout);
-
-	return nfq_set_verdict(qh, id, NF_ACCEPT, ret, data);
+		/* Rewrite packet */
+    	static const char STR_AHOJ[] = "ahoj";
+    	static const char STR_HOLA[] = "hola";
+    	static const size_t LEN = sizeof(STR_AHOJ) - 1;
+    	for (char *p = data, *end = p + ret, *q = NULL; p < end; p = q + LEN)
+    	{
+    		q = memmem(p, end - p, STR_AHOJ, LEN);
+    		if (!q)
+    			break;
+    		memcpy(q, STR_HOLA, LEN);
+    		is_changed = true;
+    	}
+    	fputc('\n', stdout);
+		return nfq_set_verdict(qh, id, NF_ACCEPT, ret, data);
 	}
 	else
 	{
-	  return nfq_set_verdict(qh, id, NF_ACCEPT, 0, NULL);
+		return nfq_set_verdict(qh, id, NF_ACCEPT, 0, NULL);
 	}
 }
 
