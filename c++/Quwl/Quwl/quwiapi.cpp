@@ -114,6 +114,10 @@ void QuwiApi::onProjectsListFinished(QNetworkReply *reply)
 
             qDebug() << __func__ << "; item: " << o << ";";
             list.push_back(ProjectItem{name, logoUrl, id, position, isActive});
+            list.push_back(ProjectItem{name, logoUrl, id, position, isActive});
+            list.push_back(ProjectItem{name, logoUrl, id, position, isActive});
+            list.push_back(ProjectItem{name, logoUrl, id, position, isActive});
+            list.push_back(ProjectItem{name, logoUrl, id, position, isActive});
         }
         emit projectsListFinished(list);
     }

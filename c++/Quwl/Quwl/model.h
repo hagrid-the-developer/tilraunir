@@ -4,6 +4,7 @@
 #include <QObject>
 
 #include "common.h"
+#include "projectslistmodel.h"
 #include "quwiapi.h"
 
 
@@ -16,7 +17,7 @@ class Model : public QObject
     ProjectsList projects_;
 
 public:
-    Model(QuwiApi *api, QObject *parent = nullptr);
+    Model(QuwiApi *api, ProjectsListModel *projectModel, QObject *parent = nullptr);
 
     bool getHasToken() const noexcept { return hasToken_; }
     void setHasToken(bool const hasToken) noexcept;

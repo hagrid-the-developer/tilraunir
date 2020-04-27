@@ -16,6 +16,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
         main.cpp \
         model.cpp \
+        projectslistmodel.cpp \
         quwiapi.cpp
 
 RESOURCES += qml.qrc \
@@ -35,6 +36,7 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 HEADERS += \
     common.h \
     model.h \
+    projectslistmodel.h \
     quwiapi.h
 
 DISTFILES +=

@@ -22,10 +22,12 @@ int main(int argc, char *argv[])
     }, Qt::QueuedConnection);
 
     QuwiApi api{};
-    Model model{&api};
+    ProjectsListModel projectsModel;
+    Model model{&api, &projectsModel};
 
     engine.rootContext()->setContextProperty("api", &api);
     engine.rootContext()->setContextProperty("model", &model);
+    engine.rootContext()->setContextProperty("projectsModel", &projectsModel);
     engine.load(url);
 
     return app.exec();
