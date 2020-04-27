@@ -14,7 +14,7 @@
 #include <libnetfilter_queue/libnetfilter_queue.h>
 
 static int cb(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
-	      struct nfq_data *nfa, void *_data)
+	    	  struct nfq_data *nfa, void *_data)
 {
 	printf("entering callback\n");
 
@@ -89,6 +89,7 @@ static int cb(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
 				fprintf(stdout, "\\x%.02d", c);
 			}
 		}
+    	fputc('\n', stdout);
 
 		/* Rewrite packet */
     	static const char STR_AHOJ[] = "ahoj";
@@ -102,7 +103,9 @@ static int cb(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
     		memcpy(q, STR_HOLA, LEN);
     		is_changed = true;
     	}
-    	fputc('\n', stdout);
+	}
+	if (is_changed)
+	{
 		return nfq_set_verdict(qh, id, NF_ACCEPT, ret, data);
 	}
 	else
