@@ -12,14 +12,18 @@
 
 #include <libnetfilter_queue/libnetfilter_queue.h>
 
-static int print_pkt (struct nfq_data *tb)
+static int cb(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
+	      struct nfq_data *nfa, void *_data)
 {
+	printf("entering callback\n");
+
 	int id = 0;
 	struct nfqnl_msg_packet_hdr *ph;
 	struct nfqnl_msg_packet_hw *hwph;
 	uint32_t mark, ifi, uid, gid;
 	int ret;
 	unsigned char *data, *secdata;
+	struct nfq_data *tb = nfa;
 
 	ph = nfq_get_msg_packet_hdr(tb);
 	if (ph) {
@@ -84,32 +88,24 @@ static int print_pkt (struct nfq_data *tb)
 			}
 		}
 	static const char STR_AHOJ[] = "ahoj";
-	static const char STR_HOLE[] = "hola";
+	static const char STR_HOLA[] = "hola";
 	static const size_t LEN = sizeof(STR_AHOJ) - 1;
-	for (char *p = data, *end = p + ret; p < end; p += LEN)
+	for (char *p = data, *end = p + ret, *q = NULL; p < end; p = q + LEN)
 	{
-		char *q = memmem(p, end - p, STR_AHOJ, LEN);
+		q = memmem(p, end - p, STR_AHOJ, LEN);
 		if (!q)
 			break;
-		memcpy(q, STR_HOLE, LEN);
+		memcpy(q, STR_HOLA, LEN);
 	}
 
 	fputc('\n', stdout);
 
-	return nfq_set_verdict(qh, id, NF_ACCEPT, data, ret);
+	return nfq_set_verdict(qh, id, NF_ACCEPT, ret, data);
 	}
 	else
 	{
 	  return nfq_set_verdict(qh, id, NF_ACCEPT, 0, NULL);
 	}
-}
-	
-
-static int cb(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
-	      struct nfq_data *nfa, void *data)
-{
-	printf("entering callback\n");
-	return print_pkt(nfa);
 }
 
 int main(int argc, char **argv)
