@@ -3,13 +3,25 @@ import QtQuick.Layouts 1.14
 import QtQuick.Controls 2.14
 import QtQuick.Dialogs 1.2
 
-Popup {
+Dialog {
     id: loginDialog
-    //modality: Qt.WindowModal
-    //title: "Enter Email and Password"
-    focus: true
+    modality: Qt.WindowModal
+    title: "Enter Email and Password"
+    //focus: true
 
     contentItem: GridLayout {
+        Keys.onPressed: {
+            if ( event.key === Qt.Key_Return ) {
+                console.log("Enter pressed");
+                loginDialog.accept();
+            } else if (event.key === Qt.Key_Escape) {
+                console.log("Esc pressed");
+                loginDialog.reject();
+            } else {
+                console.log("Some key pressed");
+            }
+        }
+
         focus: true
         LoginForm {
             focus: true
