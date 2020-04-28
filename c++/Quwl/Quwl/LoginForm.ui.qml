@@ -4,21 +4,20 @@ import QtQuick.Controls 2.14
 
 Item {
     id: loginForm
-    // modal: true
     width: 800
-    height: 200
-    // dim: true
-    // clip: true
+    height: 250
     property alias loginForm: loginForm
     property alias userName: txtUserName.text
     property alias password: txtPassword.text
 
-    //    focus: true
+    signal accepted()
+
+    focus: true
     Image {
         id: image
         y: 0
         width: 800
-        height: 200
+        height: 250
         fillMode: Image.Stretch
         source: "images/login_bg.png"
 
@@ -46,7 +45,7 @@ Item {
             id: txtUserName
             x: 168
             y: 140
-            width: 553
+            width: 580
             height: 20
             text: qsTr("Username")
             focus: true
@@ -56,21 +55,13 @@ Item {
             cursorVisible: true
             verticalAlignment: Text.AlignVCenter
             font.pixelSize: 12
-
-            Rectangle {
-                id: rectUserName
-                color: "#ffffff"
-                radius: 7
-                visible: false
-                anchors.fill: parent
-            }
         }
 
         TextInput {
             id: txtPassword
             x: 168
             y: 175
-            width: 553
+            width: 580
             height: 20
             text: qsTr("Text Input")
             activeFocusOnTab: true
@@ -81,20 +72,12 @@ Item {
             cursorVisible: true
             verticalAlignment: Text.AlignVCenter
             font.pixelSize: 12
-
-            Rectangle {
-                id: rectPassword
-                color: "#ffffff"
-                radius: 7
-                visible: false
-                anchors.fill: parent
-            }
         }
 
         Rectangle {
             id: rectangle
             height: 100
-            anchors.bottomMargin: 98
+            anchors.bottomMargin: 167
             anchors.fill: parent
             gradient: Gradient {
                 GradientStop {
@@ -124,17 +107,28 @@ Item {
                 font.pixelSize: 33
             }
         }
+
+        Button {
+            id: btnLogin
+            x: 499
+            y: 211
+            width: 265
+            height: 26
+            text: qsTr("Login")
+            opacity: 0.85
+            autoExclusive: true
+        }
     }
 
     Connections {
-        target: loginForm
-        onClicked: print("clicked")
+        target: btnLogin
+        onClicked: accepted()
     }
 }
 
 /*##^##
 Designer {
-    D{i:8;anchors_height:100}
+    D{i:6;anchors_height:100}
 }
 ##^##*/
 

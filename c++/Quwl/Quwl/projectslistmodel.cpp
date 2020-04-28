@@ -7,7 +7,7 @@ ProjectsListModel::ProjectsListModel(QObject *parent)
     , l_{
         ProjectItem{"My Project", QString{"https://api.quwi.com/files/projects/768-thumb.png?v=1"}, 768, 1, true},
         ProjectItem{"Project X", QString{"https://api.quwi.com/files/projects/768-thumb.png?v=1"}, 778, 1, true},
-        //ProjectItem{"Nibiru", QString{"https://api.quwi.com/files/projects/768-thumb.png?v=1"}, 76080, 1, true},
+        ProjectItem{"Nibiru", QString{"https://api.quwi.com/files/projects/768-thumb.png?v=1"}, 76080, 1, true},
       }
 {
 }

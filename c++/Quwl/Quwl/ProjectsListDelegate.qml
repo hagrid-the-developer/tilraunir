@@ -2,9 +2,11 @@ import QtQuick 2.0
 import QtQuick.Controls 2.14
 
 Item {
-    anchors.fill: parent
+    width: parent.width; height: 128
     Grid {
         id: grid
+        anchors.rightMargin: 0
+        anchors.bottomMargin: 0
         rows: 3
         columns: 3
         anchors.fill: parent
@@ -27,6 +29,7 @@ Item {
             id: chkIsActive
             enabled: is_active
             text: qsTr("Is Active")
+            checkable: false
         }
 
         Text {

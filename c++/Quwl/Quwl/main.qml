@@ -33,15 +33,10 @@ ApplicationWindow {
 
     ListView {
         id: listView
-        y: 250
+        width: parent.width
+        height: parent.height
         orientation: ListView.Vertical
-        height: 1000
-        anchors.left: parent.left
-        anchors.leftMargin: 233
-        anchors.right: parent.right
-        anchors.rightMargin: 239
-        anchors.verticalCenter: parent.verticalCenter
-        anchors.top: parent.top
+        anchors.fill: parent
         model: projectsModel
         delegate: ProjectsListDelegate {}
     }
