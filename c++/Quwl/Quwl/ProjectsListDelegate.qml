@@ -27,7 +27,7 @@ Item {
 
         CheckBox {
             id: chkIsActive
-            enabled: is_active
+            checked: is_active
             text: qsTr("Is Active")
             checkable: false
         }
