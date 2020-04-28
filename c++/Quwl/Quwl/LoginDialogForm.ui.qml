@@ -1,15 +1,21 @@
 import QtQuick 2.4
 import QtQuick.Layouts 1.14
+import QtQuick.Controls 2.14
 import QtQuick.Dialogs 1.2
 
-Dialog {
+Popup {
     id: loginDialog
-    modality: Qt.WindowModal
-    title: "Enter Email and Password"
+    //modality: Qt.WindowModal
+    //title: "Enter Email and Password"
+    focus: true
 
-    contentItem: GridLayout {LoginForm {
-        id: loginForm
-    } }
+    contentItem: GridLayout {
+        focus: true
+        LoginForm {
+            focus: true
+            id: loginForm
+        }
+    }
 
     Connections {
         target: loginDialog
@@ -21,7 +27,7 @@ Dialog {
     }
 
 
-    standardButtons: StandardButton.Ok
+    //standardButtons: StandardButton.Ok
 
     signal submitted(string userName, string password)
 }

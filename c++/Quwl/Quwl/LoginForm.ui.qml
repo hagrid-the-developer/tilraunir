@@ -10,7 +10,7 @@ Item {
     property alias userName: txtUserName.text
     property alias password: txtPassword.text
 
-    signal accepted()
+    signal accepted
 
     focus: true
     Image {
