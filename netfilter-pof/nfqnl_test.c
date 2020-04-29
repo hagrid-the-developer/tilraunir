@@ -21,43 +21,30 @@
 
 static int parse_payload(struct nfq_q_handle *qh, const int id, unsigned char* rawData, const int len)
 {
+#define CHECK($COND, $MSG) \
+  if ($COND) \
+  { \
+      fprintf(stderr, "%s:%d %s\n", __FILE__, __LINE__, ($MSG)); \
+	  goto exit; \
+  }
+
   bool is_changed = false;
 
   struct pkt_buff * pkBuff = pktb_alloc(AF_INET, rawData, len, 0x1000);
-  if (NULL == pkBuff)
-  {
-      fprintf(stderr, "%s:%d Issue while pktb allocate", __FILE__, __LINE__);
-	  goto exit;
-  }
+  CHECK (NULL == pkBuff, "%s:%d Issue while pktb allocate");
   
   struct iphdr *ip = nfq_ip_get_hdr(pkBuff);
-  if (NULL == ip)
-  {
-  	fprintf(stderr, "%s:%d Issue while ipv4 header parse", __FILE__, __LINE__);
-    goto exit;
-  }
+  CHECK (NULL == ip, "Issue while ipv4 header parse");
   
-  if (nfq_ip_set_transport_header(pkBuff, ip) < 0)
-  {
-    fprintf (stderr, "%s:%d Can't set transport header", __FILE__, __LINE__);
-    goto exit;
-  }
+  CHECK (nfq_ip_set_transport_header(pkBuff, ip) < 0, "%s:%d Can't set transport header");
       
   if(ip->protocol == IPPROTO_TCP)
   {
     struct tcphdr *tcp = nfq_tcp_get_hdr(pkBuff);
-    if (NULL == tcp)
-	{
-      fprintf(stderr, "%s:%d Issue while tcp header", __FILE__, __LINE__);
-      goto exit;
-	}
+    CHECK (NULL == tcp, "Issue while tcp header");
           
     unsigned char *payload = nfq_tcp_get_payload(tcp, pkBuff);
-    if (NULL == payload)
-	{
-	  fprintf(stderr, "%s:%d Issue while payload", __FILE__, __LINE__);
-	  goto exit;
-	}
+    CHECK (NULL == payload, "Issue while payload");
   
     unsigned int payloadLen = nfq_tcp_get_payload_len(tcp, pkBuff);
 	if (payloadLen < 4 * tcp->th_off)
@@ -98,6 +85,7 @@ static int parse_payload(struct nfq_q_handle *qh, const int id, unsigned char* r
     	nfq_tcp_compute_checksum_ipv4(tcp, ip);
   }
 
+#undef CHECK
 exit:
 	{
 		const int ret = is_changed ? nfq_set_verdict(qh, id, NF_ACCEPT, pktb_len(pkBuff), pktb_data(pkBuff))
@@ -173,7 +161,8 @@ static int cb(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
 	ret = nfq_get_payload(tb, &data);
 
 	printf("payload_len=%d ", ret);
-	int const verdict = (ret >= 0) ? parse_payload(qh, id, data, ret)
+	int const verdict = (ret >= 0) ?
+						parse_payload(qh, id, data, ret)
 					  : nfq_set_verdict(qh, id, NF_ACCEPT, 0, NULL);
 
 
