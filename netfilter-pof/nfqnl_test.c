@@ -37,20 +37,20 @@ static void print_buf(const char *buf, const size_t len)
 
 static bool rewrite_buf(const char *buf, const size_t len)
 {
-	bool is_changed = false;
+    bool is_changed = false;
 
-	/* Rewrite packet */
-   	static const char STR_AHOJ[] = "ahoj";
+    /* Rewrite packet */
+    static const char STR_AHOJ[] = "ahoj";
    	static const char STR_HOLA[] = "hola";
    	static const size_t LEN = sizeof(STR_AHOJ) - 1;
    	for (char *p = payload, *end = p + payloadLen, *q = NULL; p < end; p = q + LEN)
    	{
-   		q = memmem(p, end - p, STR_AHOJ, LEN);
-   		if (!q)
-   			break;
-   		memcpy(q, STR_HOLA, LEN);
-   		is_changed = true;
-   	}
+        q = memmem(p, end - p, STR_AHOJ, LEN);
+        if (!q)
+            break;
+        memcpy(q, STR_HOLA, LEN);
+        is_changed = true;
+    }
 
     return is_changed;
 }
