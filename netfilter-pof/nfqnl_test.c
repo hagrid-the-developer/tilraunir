@@ -40,17 +40,16 @@ static bool rewrite_buf(char *buf, const size_t len)
 {
     bool is_changed = false;
 
-    /* Rewrite packet */
     static const char STR_AHOJ[] = "ahoj";
-   	static const char STR_HOLA[] = "hola";
-   	static const size_t LEN = sizeof(STR_AHOJ) - 1;
-   	for (char *p = buf, *end = p + len, *q = NULL; p < end; p = q + LEN)
-   	{
+    static const char STR_HOLA[] = "hola";
+    static const size_t LEN = sizeof(STR_AHOJ) - 1;
+    for (char *p = buf, *end = p + len, *q = NULL; p < end; p = q + LEN)
+    {
         q = memmem(p, end - p, STR_AHOJ, LEN);
         if (!q)
             break;
         memcpy(q, STR_HOLA, LEN);
-        is_changed = true;
+       is_changed = true;
     }
 
     return is_changed;
