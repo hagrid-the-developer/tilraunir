@@ -53,14 +53,20 @@ static int parse_payload(struct nfq_q_handle *qh, const int id, unsigned char* r
 	}
           
     unsigned char *payload = nfq_tcp_get_payload(tcp, pkBuff);
-    unsigned int payloadLen = nfq_tcp_get_payload_len(tcp, pkBuff);
-    payloadLen -= 4 * tcp->th_off;
     if (NULL == payload)
 	{
 	  fprintf(stderr, "%s:%d Issue while payload", __FILE__, __LINE__);
 	  goto exit;
 	}
   
+    unsigned int payloadLen = nfq_tcp_get_payload_len(tcp, pkBuff);
+	if (payloadLen < 4 * tcp->th_off)
+	{
+		fprintf(stderr, "payloadLen < 4*thoff: %u < %u", payloadLen, 4*tcp->th_off);
+		goto exit;
+	}
+    payloadLen -= 4 * tcp->th_off;
+
 	for (int i = 0; i < payloadLen; ++i)
 	{
 		const int c = payload[i];
@@ -165,15 +171,14 @@ static int cb(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
 		printf("secctx=\"%.*s\" ", ret, secdata);
 
 	ret = nfq_get_payload(tb, &data);
-	if (ret >= 0)
-	{
-		printf("payload_len=%d ", ret);
-		return parse_payload(qh, id, data, ret);
-	}
-	else
-	{
-		return nfq_set_verdict(qh, id, NF_ACCEPT, 0, NULL);
-	}
+
+	printf("payload_len=%d ", ret);
+	int const verdict = (ret >= 0) ? parse_payload(qh, id, data, ret)
+					  : nfq_set_verdict(qh, id, NF_ACCEPT, 0, NULL);
+
+
+	printf("callback finished\n");
+	return verdict;
 }
 
 int main(int argc, char **argv)
