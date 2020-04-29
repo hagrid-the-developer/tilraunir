@@ -68,20 +68,20 @@ if ($COND) \
 
     struct pkt_buff * pkBuff = pktb_alloc(AF_INET, rawData, len, 0x1000);
     CHECK (NULL == pkBuff, "%s:%d Issue while pktb allocate");
-  
+
     struct iphdr *ip = nfq_ip_get_hdr(pkBuff);
     CHECK (NULL == ip, "Issue while ipv4 header parse");
-  
+
     CHECK (nfq_ip_set_transport_header(pkBuff, ip) < 0, "%s:%d Can't set transport header");
-      
+
     if(ip->protocol == IPPROTO_TCP)
     {
         struct tcphdr *tcp = nfq_tcp_get_hdr(pkBuff);
         CHECK (NULL == tcp, "Issue while tcp header");
-          
+
         unsigned char *payload = nfq_tcp_get_payload(tcp, pkBuff);
         CHECK (NULL == payload, "Issue while payload");
-  
+
         unsigned int payloadLen = nfq_tcp_get_payload_len(tcp, pkBuff);
         if (payloadLen < 4 * tcp->th_off)
         {
