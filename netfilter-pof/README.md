@@ -1,3 +1,10 @@
+Install the libraries
+=====================
+
+        $ sudo apt install libnetfilter-queue-dev
+        $ sudo apt install libnftnl-dev
+
+
 Running the test with obsolete interface
 ========================================
 
