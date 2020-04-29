@@ -19,11 +19,12 @@
 #include <libnetfilter_queue/libnetfilter_queue_tcp.h>
 
 
+// FIXMe: What about return values from functions? Are they assigned to variables with correct type?
 static void print_buf(const char *buf, const size_t len)
 {
-    for (size_t i = 0; i < payloadLen; ++i)
+    for (size_t i = 0; i < len; ++i)
     {
-        const int c = payload[i];
+        const int c = buf[i];
         if (0x20 <= c && c < 0x7F)
         {
             fputc(c, stdout);
@@ -35,7 +36,7 @@ static void print_buf(const char *buf, const size_t len)
     }
 }
 
-static bool rewrite_buf(const char *buf, const size_t len)
+static bool rewrite_buf(char *buf, const size_t len)
 {
     bool is_changed = false;
 
@@ -43,7 +44,7 @@ static bool rewrite_buf(const char *buf, const size_t len)
     static const char STR_AHOJ[] = "ahoj";
    	static const char STR_HOLA[] = "hola";
    	static const size_t LEN = sizeof(STR_AHOJ) - 1;
-   	for (char *p = payload, *end = p + payloadLen, *q = NULL; p < end; p = q + LEN)
+   	for (char *p = buf, *end = p + len, *q = NULL; p < end; p = q + LEN)
    	{
         q = memmem(p, end - p, STR_AHOJ, LEN);
         if (!q)
@@ -79,23 +80,25 @@ if ($COND) \
         struct tcphdr *tcp = nfq_tcp_get_hdr(pkBuff);
         CHECK (NULL == tcp, "Issue while tcp header");
 
-        unsigned char *payload = nfq_tcp_get_payload(tcp, pkBuff);
-        CHECK (NULL == payload, "Issue while payload");
+        unsigned char *tcp_payload = nfq_tcp_get_payload(tcp, pkBuff);
+        CHECK (NULL == tcp_payload, "Issue while payload");
 
-        unsigned int payloadLen = nfq_tcp_get_payload_len(tcp, pkBuff);
-        if (payloadLen < 4 * tcp->th_off)
+        unsigned int tcp_payload_len = nfq_tcp_get_payload_len(tcp, pkBuff);
+        if (tcp_payload_len < 4*tcp->th_off)
         {
-            fprintf(stderr, "payloadLen < 4*thoff: %u < %u", payloadLen, 4*tcp->th_off);
+            fprintf(stderr, "payloadLen < 4*thoff: %u < %u", tcp_payload_len, 4*tcp->th_off);
             goto exit;
         }
-        payloadLen -= 4 * tcp->th_off;
+        tcp_payload_len -= 4*tcp->th_off;
 
-        print_buf(payload, payloadLen);
+        print_buf(tcp_payload, tcp_payload_len);
    	    fputc('\n', stdout);
 
-        const bool is_changed = rewrite_buf()
+        const bool is_changed = rewrite_buf(tcp_payload, tcp_payload_len);
         if (is_changed)
+        {
             nfq_tcp_compute_checksum_ipv4(tcp, ip);
+        }
     }
 
 #undef CHECK
