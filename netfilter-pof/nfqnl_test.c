@@ -94,7 +94,7 @@ if ($COND) \
    	    fputc('\n', stdout);
 
         const bool is_changed = rewrite_buf()
-	    if (is_changed)
+        if (is_changed)
             nfq_tcp_compute_checksum_ipv4(tcp, ip);
     }
 
@@ -140,7 +140,7 @@ static int cb(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
         for (i = 0; i < hlen-1; i++)
             printf("%02x:", hwph->hw_addr[i]);
         printf("%02x ", hwph->hw_addr[hlen-1]);
-	}
+    }
 
     mark = nfq_get_nfmark(tb);
     if (mark)
@@ -193,14 +193,15 @@ int main(int argc, char **argv)
     if (argc == 2)
     {
         queue = atoi(argv[1]);
-        if (queue > 65535) {
+        if (queue > 65535)
+        {
             fprintf(stderr, "Usage: %s [<0-65535>]\n", argv[0]);
             exit(EXIT_FAILURE);
         }
-	}
+    }
 
-	printf("opening library handle\n");
-	h = nfq_open();
+    printf("opening library handle\n");
+    h = nfq_open();
     if (!h)
     {
         fprintf(stderr, "error during nfq_open()\n");
@@ -208,79 +209,86 @@ int main(int argc, char **argv)
 	}
 
     printf("unbinding existing nf_queue handler for AF_INET (if any)\n");
-    if (nfq_unbind_pf(h, AF_INET) < 0) {
+    if (nfq_unbind_pf(h, AF_INET) < 0)
+    {
         fprintf(stderr, "error during nfq_unbind_pf()\n");
         exit(1);
     }
 
-	printf("binding nfnetlink_queue as nf_queue handler for AF_INET\n");
-	if (nfq_bind_pf(h, AF_INET) < 0) {
-		fprintf(stderr, "error during nfq_bind_pf()\n");
-		exit(1);
-	}
+    printf("binding nfnetlink_queue as nf_queue handler for AF_INET\n");
+    if (nfq_bind_pf(h, AF_INET) < 0)
+    {
+        fprintf(stderr, "error during nfq_bind_pf()\n");
+        exit(1);
+    }
 
-	printf("binding this socket to queue '%d'\n", queue);
-	qh = nfq_create_queue(h, queue, &cb, NULL);
-	if (!qh) {
-		fprintf(stderr, "error during nfq_create_queue()\n");
-		exit(1);
-	}
+    printf("binding this socket to queue '%d'\n", queue);
+    qh = nfq_create_queue(h, queue, &cb, NULL);
+    if (!qh)
+    {
+        fprintf(stderr, "error during nfq_create_queue()\n");
+        exit(1);
+    }
 
-	printf("setting copy_packet mode\n");
-	if (nfq_set_mode(qh, NFQNL_COPY_PACKET, 0xffff) < 0) {
-		fprintf(stderr, "can't set packet_copy mode\n");
-		exit(1);
-	}
+    printf("setting copy_packet mode\n");
+    if (nfq_set_mode(qh, NFQNL_COPY_PACKET, 0xffff) < 0) {
+        fprintf(stderr, "can't set packet_copy mode\n");
+        exit(1);
+    }
 
-	printf("setting flags to request UID and GID\n");
-	if (nfq_set_queue_flags(qh, NFQA_CFG_F_UID_GID, NFQA_CFG_F_UID_GID)) {
-		fprintf(stderr, "This kernel version does not allow to "
-				"retrieve process UID/GID.\n");
-	}
+    printf("setting flags to request UID and GID\n");
+    if (nfq_set_queue_flags(qh, NFQA_CFG_F_UID_GID, NFQA_CFG_F_UID_GID)) {
+        fprintf(stderr, "This kernel version does not allow to "
+        "retrieve process UID/GID.\n");
+    }
 
-	printf("setting flags to request security context\n");
-	if (nfq_set_queue_flags(qh, NFQA_CFG_F_SECCTX, NFQA_CFG_F_SECCTX)) {
-		fprintf(stderr, "This kernel version does not allow to "
-				"retrieve security context.\n");
-	}
+    printf("setting flags to request security context\n");
+    if (nfq_set_queue_flags(qh, NFQA_CFG_F_SECCTX, NFQA_CFG_F_SECCTX))
+    {
+        fprintf(stderr, "This kernel version does not allow to "
+                "retrieve security context.\n");
+    }
 
-	printf("Waiting for packets...\n");
+    printf("Waiting for packets...\n");
 
-	fd = nfq_fd(h);
+    fd = nfq_fd(h);
 
-	for (;;) {
-		if ((rv = recv(fd, buf, sizeof(buf), 0)) >= 0) {
-			printf("pkt received\n");
-			nfq_handle_packet(h, buf, rv);
-			continue;
-		}
-		/* if your application is too slow to digest the packets that
-		 * are sent from kernel-space, the socket buffer that we use
-		 * to enqueue packets may fill up returning ENOBUFS. Depending
-		 * on your application, this error may be ignored. Please, see
-		 * the doxygen documentation of this library on how to improve
-		 * this situation.
-		 */
-		if (rv < 0 && errno == ENOBUFS) {
-			printf("losing packets!\n");
-			continue;
-		}
-		perror("recv failed");
-		break;
-	}
+    for (;;)
+    {
+        if ((rv = recv(fd, buf, sizeof(buf), 0)) >= 0)
+        {
+            printf("pkt received\n");
+            nfq_handle_packet(h, buf, rv);
+            continue;
+        }
+        /* if your application is too slow to digest the packets that
+         * are sent from kernel-space, the socket buffer that we use
+         * to enqueue packets may fill up returning ENOBUFS. Depending
+         * on your application, this error may be ignored. Please, see
+         * the doxygen documentation of this library on how to improve
+         * this situation.
+         */
+        if (rv < 0 && errno == ENOBUFS)
+        {
+            printf("losing packets!\n");
+            continue;
+        }
+        perror("recv failed");
+        break;
+    }
 
-	printf("unbinding from queue 0\n");
-	nfq_destroy_queue(qh);
+    printf("unbinding from queue 0\n");
+    nfq_destroy_queue(qh);
 
 #ifdef INSANE
-	/* normally, applications SHOULD NOT issue this command, since
-	 * it detaches other programs/sockets from AF_INET, too ! */
-	printf("unbinding from AF_INET\n");
-	nfq_unbind_pf(h, AF_INET);
+    /* normally, applications SHOULD NOT issue this command, since
+     * it detaches other programs/sockets from AF_INET, too ! */
+    printf("unbinding from AF_INET\n");
+    nfq_unbind_pf(h, AF_INET);
 #endif
 
-	printf("closing library handle\n");
-	nfq_close(h);
+    printf("closing library handle\n");
+    nfq_close(h);
 
-	exit(0);
+    return 0;
 }
