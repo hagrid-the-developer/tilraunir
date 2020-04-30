@@ -1,13 +1,13 @@
 Files
 =====
 
-* nf-queue.c -- Based on example with new nfq interface. WIP, it doesn't link on Debian 10.
-  Maybe new interface is not stable yet and it is better to go with obsolete interface now.
+* `nf-queue.c` -- Based on example with new `NFQ` interface. WIP, it doesn't link on `Debian 10`.
+  Maybe the new interface is not stable yet and it is better to go with obsolete interface for now.
 
-* nfqnl_test.c -- Implementation with obsolete interface, can rewrite payload of TCP packets.
+* `nfqnl_test.c` -- Implementation with obsolete interface, can rewrite payload of TCP packets.
 It is in pure C so resource and error handling is a bit complicated.
 
-* echo_server.py -- Quick & Dirty implementation of echo server in Python.
+* `echo_server.py` -- Quick & Dirty implementation of echo server in Python.
 
 
 Install the libraries
@@ -31,7 +31,7 @@ Test runs over `localhost`, it uses port `1024`. It is necessary to rewrite
 - Configure the iptables, eg.:
 
         $ sudo iptables -A INPUT -p tcp -s 127.0.0.1 -j NFQUEUE --queue-num 0
-        $ sudo iptables -A OUTPUT -p tcp -d 127.0.0.1 -j NFQUEUE --queue-num
+        $ sudo iptables -A OUTPUT -p tcp -d 127.0.0.1 -j NFQUEUE --queue-num 0
 
 - First terminal:
 
@@ -41,8 +41,6 @@ Test runs over `localhost`, it uses port `1024`. It is necessary to rewrite
 - Second terminal:
 
         $ make obsolete
-        $ sudo iptables -A INPUT -p tcp -s 127.0.0.1 -j NFQUEUE --queue-num 0
-        $ sudo iptables -A OUTPUT -p tcp -d 127.0.0.1 -j NFQUEUE --queue-num 0
         $ sudo ./nfqnl_test
 
 - Third terminal:
