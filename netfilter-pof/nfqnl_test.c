@@ -203,7 +203,7 @@ int main(int argc, char **argv)
     int fd;
     int rv;
     uint32_t queue = 0;
-    char buf[16*4096] __attribute__ ((aligned));
+    char buf[4096] __attribute__ ((aligned));
 
     if (argc == 2)
     {
