@@ -73,9 +73,8 @@ Steps to run test with this scipt:
 - Run the script:
 
         $ ./run_nfqnl_test.sh
-        Created tmp: `/.../tmp/17209'
+        INFO: Created tmp: `/.../tmp/17441'
         Passed
-        Killing background jobs...
 
 Script uses `sudo` to run some commands with `root` privileges. It creates directory where it
 stores `stdout` and `stderr` of commands it runs. After it runs the test, it checks that data sent to

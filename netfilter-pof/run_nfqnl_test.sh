@@ -13,7 +13,6 @@ EXPECTED_OUT="$TMP/expected.out"
 
 function atexit()
 {
-    echo >&2 "Killing background jobs..."
     ! sudo kill $(jobs -p) 2>/dev/null
 }
 
@@ -42,7 +41,7 @@ function print_nc_input()
 trap "atexit" EXIT
 
 mkdir -p "$TMP"
-echo >&2 "Created tmp: \`$TMP'"
+echo >&2 "INFO: Created tmp: \`$TMP'"
 
 run_srv
 run_nfq
@@ -54,7 +53,7 @@ print_nc_input | nc -q5 127.0.0.1 1024 >"$NC_OUT" 2>"$NC_ERR"
 [ -s "$NC_ERR" ] && echo >&2 "WARN: Nonempty stderr from netcat: \`$NC_ERR'"
 if ! cmp -s "$NC_OUT" "$EXPECTED_OUT"
 then
-    echo >&2 "Output from netcat differs from expected output :-("
+    echo >&2 "ERROR: Output from netcat differs from expected output :-("
     diff -up "$EXPECTED_OUT" "$NC_OUT" | head -n32
     exit 1
 fi
