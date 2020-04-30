@@ -56,7 +56,7 @@ It is not ideal but hopefully it is acceptable compromise for this test.
 Running semi-automatic test
 ---------------------------
 
-There is a script `run_nfqnl_test.sh` that runs all three parts (tcp server, NFQ server and `netcat`) for you.
+There is a script `run_nfqnl_test.sh` that runs all three parts (`tcp server`, `NFQ server` and `netcat`) for you.
 
 Steps to run test with this scipt:
 
