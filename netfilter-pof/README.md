@@ -13,7 +13,7 @@ It is in pure C so resource and error handling is a bit complicated.
 Install the libraries
 =====================
 
-        Installation on Debian-based system:
+Installation of libraries on Debian-based system:
 
         $ sudo apt install libnetfilter-queue-dev
         $ sudo apt install libnftnl-dev
@@ -22,8 +22,11 @@ Install the libraries
 Running the test with obsolete interface
 ========================================
 
+Running the test by hand
+------------------------
+
 Test runs over `localhost`, it uses port `1024`. It is necessary to rewrite
-`iptables` rules so it is better to run the test on virtual machine, inside docker, etc.
+`iptables` rules so it is better to run the test on virtual machine, or inside docker, etc.
 
 - Configure the iptables, eg.:
 
@@ -44,5 +47,9 @@ Test runs over `localhost`, it uses port `1024`. It is necessary to rewrite
 
 - Third terminal:
 
-        $ echo 'ahoj svete' | nc 127.0.0.1 1024
+        $ echo 'ahoj svete' | nc -q5 127.0.0.1 1024
+
+Note: `nc` is called with parameter `-q5` to force it to close the connection
+5 seconds after `EOF` on `stdin`.
+It is not ideal but hopefully it is acceptable compromise for this test.
 
