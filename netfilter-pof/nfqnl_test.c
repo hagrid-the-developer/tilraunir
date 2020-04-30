@@ -21,6 +21,7 @@
 
 // FIXME: What about return values from functions? Are they assigned to variables with correct type?
 
+/// Print buffer with binary data in human-readable form
 static void print_buf(const unsigned char *buf, const size_t len)
 {
     for (size_t i = 0; i < len; ++i)
@@ -37,6 +38,8 @@ static void print_buf(const unsigned char *buf, const size_t len)
     }
 }
 
+/// Rewrite buffer: Find all occurences of "ahoj" and replace them with "hola".
+/// @return true/false whether buffer has been rewritten
 static bool rewrite_buf(unsigned char *buf, const size_t len)
 {
     bool is_changed = false;
@@ -55,6 +58,11 @@ static bool rewrite_buf(unsigned char *buf, const size_t len)
 
     return is_changed;
 }
+
+/// If the packet is TCP and if its payload contains at least one string "ahoj" then rewrite it.
+/// Do not touch the payload otherwise.
+/// This function calls `nfq_set_verdict()`
+/// @return Return value of `nfq_set_verdict()`
 
 static int rewrite_payload(struct nfq_q_handle *qh, const int id, unsigned char* rawData, const int len)
 {
@@ -115,6 +123,7 @@ exit:
     }
 }
 
+/// Callback for Netfilter Queue
 static int cb(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
 	    	  struct nfq_data *nfa, void *_data)
 {
@@ -130,14 +139,16 @@ static int cb(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
     bool is_changed = false;
 
     ph = nfq_get_msg_packet_hdr(tb);
-    if (ph) {
+    if (ph)
+    {
         id = ntohl(ph->packet_id);
         printf("hw_protocol=0x%04x hook=%u id=%u ",
         ntohs(ph->hw_protocol), ph->hook, id);
     }
 
     hwph = nfq_get_packet_hw(tb);
-    if (hwph) {
+    if (hwph)
+    {
         int i, hlen = ntohs(hwph->hw_addrlen);
 
         printf("hw_src_addr=");
