@@ -19,8 +19,9 @@
 #include <libnetfilter_queue/libnetfilter_queue_tcp.h>
 
 
-// FIXMe: What about return values from functions? Are they assigned to variables with correct type?
-static void print_buf(const char *buf, const size_t len)
+// FIXME: What about return values from functions? Are they assigned to variables with correct type?
+
+static void print_buf(const unsigned char *buf, const size_t len)
 {
     for (size_t i = 0; i < len; ++i)
     {
@@ -36,7 +37,7 @@ static void print_buf(const char *buf, const size_t len)
     }
 }
 
-static bool rewrite_buf(char *buf, const size_t len)
+static bool rewrite_buf(unsigned char *buf, const size_t len)
 {
     bool is_changed = false;
 
@@ -46,7 +47,7 @@ static bool rewrite_buf(char *buf, const size_t len)
     for (char *p = buf, *end = p + len, *q = NULL; p < end; p = q + LEN)
     {
         q = memmem(p, end - p, STR_AHOJ, LEN);
-        if (!q)
+        if (NULL == q)
             break;
         memcpy(q, STR_HOLA, LEN);
        is_changed = true;
@@ -67,12 +68,12 @@ if ($COND) \
     bool is_changed = false;
 
     struct pkt_buff * pkBuff = pktb_alloc(AF_INET, rawData, len, 0x1000);
-    CHECK (NULL == pkBuff, "%s:%d Issue while pktb allocate");
+    CHECK (NULL == pkBuff, "Issue while pktb allocate");
 
     struct iphdr *ip = nfq_ip_get_hdr(pkBuff);
     CHECK (NULL == ip, "Issue while ipv4 header parse");
 
-    CHECK (nfq_ip_set_transport_header(pkBuff, ip) < 0, "%s:%d Can't set transport header");
+    CHECK (nfq_ip_set_transport_header(pkBuff, ip) < 0, "Can't set transport header");
 
     if(ip->protocol == IPPROTO_TCP)
     {
@@ -93,9 +94,10 @@ if ($COND) \
         print_buf(tcp_payload, tcp_payload_len);
    	    fputc('\n', stdout);
 
-        const bool is_changed = rewrite_buf(tcp_payload, tcp_payload_len);
+        is_changed = rewrite_buf(tcp_payload, tcp_payload_len);
         if (is_changed)
         {
+            printf("Buffer changed\n");
             nfq_tcp_compute_checksum_ipv4(tcp, ip);
         }
     }
