@@ -19,6 +19,9 @@
 #include <libnetfilter_queue/libnetfilter_queue_tcp.h>
 
 
+// TODO: This program replaces all occurences of "ahoj" with "hola" in TCP packet payload.
+//       It assumes that "ahoj" doesn't cross packet boundary, otherwise it is not replaced.
+
 // FIXME: What about return values from functions? Are they assigned to variables with correct type?
 
 /// Print buffer with binary data in human-readable form
