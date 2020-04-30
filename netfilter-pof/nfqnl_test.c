@@ -56,7 +56,7 @@ static bool rewrite_buf(unsigned char *buf, const size_t len)
     return is_changed;
 }
 
-static int parse_payload(struct nfq_q_handle *qh, const int id, unsigned char* rawData, const int len)
+static int rewrite_payload(struct nfq_q_handle *qh, const int id, unsigned char* rawData, const int len)
 {
 #define CHECK($COND, $MSG) \
 if ($COND) \
@@ -178,7 +178,7 @@ static int cb(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
     ret = nfq_get_payload(tb, &data);
 
     printf("payload_len=%d ", ret);
-    int const verdict = (ret >= 0) ? parse_payload(qh, id, data, ret)
+    int const verdict = (ret >= 0) ? rewrite_payload(qh, id, data, ret)
                                    : nfq_set_verdict(qh, id, NF_ACCEPT, 0, NULL);
 
     printf("callback finished\n");
